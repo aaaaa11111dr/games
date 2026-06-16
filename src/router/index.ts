@@ -1,26 +1,66 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import HomePage from '@/pages/HomePage.vue'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
-// 定义路由配置
-const routes = [
+const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    name: 'home',
-    component: HomePage,
+    name: 'Home',
+    component: () => import('../pages/HomePage.vue')
   },
   {
-    path: '/about',
-    name: 'about',
-    component: {
-      template: '<div class="text-center text-xl p-8">About Page - Coming Soon</div>',
-    },
+    path: '/leetcode',
+    name: 'LeetCode',
+    component: () => import('../pages/LeetCodePage.vue')
   },
+  {
+    path: '/codeforces',
+    name: 'Codeforces',
+    component: () => import('../pages/CodeforcesPage.vue')
+  },
+  {
+    path: '/lanqiao',
+    name: 'Lanqiao',
+    component: () => import('../pages/LanqiaoPage.vue')
+  },
+  {
+    path: '/hdu',
+    name: 'HDU',
+    component: () => import('../pages/HDUPage.vue')
+  },
+  {
+    path: '/luogu',
+    name: 'Luogu',
+    component: () => import('../pages/LuoguPage.vue')
+  },
+  {
+    path: '/pta',
+    name: 'PTA',
+    component: () => import('../pages/PTAPage.vue')
+  },
+  {
+    path: '/atcoder',
+    name: 'AtCoder',
+    component: () => import('../pages/AtCoderPage.vue')
+  },
+  {
+    path: '/nowcoder',
+    name: 'Nowcoder',
+    component: () => import('../pages/NowcoderPage.vue')
+  },
+  {
+    path: '/statistics',
+    name: 'Statistics',
+    component: () => import('../pages/StatisticsPage.vue')
+  },
+  {
+    path: '/daily',
+    name: 'Daily',
+    component: () => import('../pages/DailyPage.vue')
+  }
 ]
 
-// 创建路由实例
 const router = createRouter({
   history: createWebHistory(),
-  routes,
+  routes
 })
 
 export default router

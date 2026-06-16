@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { fetchUserStats, fetchUserSolvedProblems, parseProblemList } from '../api/leetCode'
 import type { UserStats, Problem, ComparisonResult } from '../types'
+import QRScanner from '../components/QRScanner.vue'
 
 // 状态
 const username = ref('')
@@ -12,8 +13,10 @@ const problemList = ref<Problem[]>([])
 const comparison = ref<ComparisonResult | null>(null)
 const loading = ref(false)
 const error = ref('')
-const loadingStats = ref(false)
-const loadingProblemList = ref(false)
+
+// 二维码扫描相关
+const showQRScanner = ref(false)
+const scannerMode = ref<'username' | 'problemList'>('username')
 
 // 错误状态
 const statsError = ref('')
@@ -33,88 +36,87 @@ const difficultyClass = {
   Hard: 'text-red-700'
 }
 
-// 加载用户统计
-async function loadUserStats() {
-  if (!username.value.trim()) {
-    statsError.value = '请输入 LeetCode 用户名'
-    return
-  }
-
-  loadingStats.value = true
-  statsError.value = ''
-  userStats.value = null
-
-  try {
-    userStats.value = await fetchUserStats(username.value.trim())
-  } catch (e: any) {
-    statsError.value = e.message || '获取用户数据失败'
-  } finally {
-    loadingStats.value = false
-  }
+// 打开二维码扫描（用于扫描用户名）
+function openQRScannerUsername() {
+  scannerMode.value = 'username'
+  showQRScanner.value = true
 }
 
-// 加载题单
-async function loadProblemList() {
-  if (!problemListUrl.value.trim()) {
-    problemListError.value = '请输入题单链接'
-    return
-  }
+// 打开二维码扫描（用于扫描题单）
+function openQRScannerProblemList() {
+  scannerMode.value = 'problemList'
+  showQRScanner.value = true
+}
 
-  loadingProblemList.value = true
-  problemListError.value = ''
-  problemList.value = []
-  problemListTitle.value = ''
-  comparison.value = null
+// 关闭二维码扫描
+function closeQRScanner() {
+  showQRScanner.value = false
+}
 
-  try {
-    const result = await parseProblemList(problemListUrl.value.trim())
-    problemListTitle.value = result.title
-    problemList.value = result.problems
-
-    // 如果已有用户统计数据，自动进行对比
-    if (userStats.value && username.value) {
-      await compareResults()
+// 处理二维码扫描成功
+function handleQRScan(data: string) {
+  console.log('QR scanned:', data)
+  
+  // 解析二维码内容
+  // LeetCode 个人二维码格式: https://leetcode.cn/u/username/ 或 leetcode://user/username
+  let extractedUsername = ''
+  let extractedUrl = ''
+  
+  if (data.includes('leetcode.cn/u/') || data.includes('leetcode.com/u/')) {
+    const match = data.match(/leetcode\.(?:cn|com)\/u\/([^\/\?]+)/)
+    if (match) {
+      extractedUsername = match[1]
     }
-  } catch (e: any) {
-    problemListError.value = e.message || '解析题单失败'
-  } finally {
-    loadingProblemList.value = false
-  }
-}
-
-// 对比用户做题与题单
-async function compareResults() {
-  if (!username.value.trim() || problemList.value.length === 0) {
-    return
-  }
-
-  loading.value = true
-  error.value = ''
-  comparison.value = null
-
-  try {
-    const solvedIds = await fetchUserSolvedProblems(username.value.trim())
-    const done: Problem[] = []
-    const notDone: Problem[] = []
-
-    for (const problem of problemList.value) {
-      if (solvedIds.has(problem.id)) {
-        done.push(problem)
-      } else {
-        notDone.push(problem)
+  } else if (data.includes('leetcode://user/')) {
+    const match = data.match(/leetcode:\/\/user\/([^\/\?]+)/)
+    if (match) {
+      extractedUsername = match[1]
+    }
+  } else if (data.includes('leetcode.cn/problem-list/') || data.includes('leetcode.com/problem-list/')) {
+    const match = data.match(/leetcode\.(?:cn|com)(\/[^\?\s]+)/)
+    if (match) {
+      extractedUrl = 'https://leetcode' + match[1]
+    }
+  } else if (data.startsWith('http') && data.includes('leetcode')) {
+    // 通用 URL 处理
+    if (data.includes('/u/')) {
+      const match = data.match(/leetcode\.(?:cn|com)\/u\/([^\/\?]+)/)
+      if (match) {
+        extractedUsername = match[1]
+      }
+    } else if (data.includes('/problem-list/')) {
+      const match = data.match(/leetcode\.(?:cn|com)(\/[^\?\s]+)/)
+      if (match) {
+        extractedUrl = 'https://leetcode' + match[1]
       }
     }
-
-    const progress = problemList.value.length > 0
-      ? Math.round((done.length / problemList.value.length) * 100)
-      : 0
-
-    comparison.value = { done, notDone, progress }
-  } catch (e: any) {
-    error.value = e.message || '对比失败'
-  } finally {
-    loading.value = false
+  } else if (!data.startsWith('http')) {
+    // 可能是纯用户名
+    extractedUsername = data.trim()
   }
+  
+  if (scannerMode.value === 'username' && extractedUsername) {
+    username.value = extractedUsername
+    showQRScanner.value = false
+    // 自动查询
+    loadAll()
+  } else if (scannerMode.value === 'problemList' && extractedUrl) {
+    problemListUrl.value = extractedUrl
+    showQRScanner.value = false
+  } else if (scannerMode.value === 'username' && !extractedUsername && data) {
+    // 尝试直接使用扫描内容作为用户名
+    username.value = data.trim()
+    showQRScanner.value = false
+    loadAll()
+  } else {
+    error.value = '无法识别的二维码内容'
+  }
+}
+
+// 处理二维码扫描错误
+function handleQRScanError(errorMsg: string) {
+  console.error('QR scan error:', errorMsg)
+  error.value = errorMsg
 }
 
 // 加载所有数据
@@ -194,12 +196,23 @@ async function loadAll() {
             <label class="block text-sm font-heiti font-bold mb-2 tracking-wider">
               LEETCODE 用户名
             </label>
-            <input
-              v-model="username"
-              type="text"
-              placeholder="请输入用户名"
-              class="w-full px-4 py-3 border-2 border-black bg-white text-black focus:outline-none focus:border-gray-600 transition-colors"
-            />
+            <div class="flex gap-2">
+              <input
+                v-model="username"
+                type="text"
+                placeholder="请输入用户名"
+                class="flex-1 px-4 py-3 border-2 border-black bg-white text-black focus:outline-none focus:border-gray-600 transition-colors"
+              />
+              <button
+                @click="openQRScannerUsername"
+                class="px-4 py-3 bg-gray-100 border-2 border-black text-black hover:bg-gray-200 transition-colors font-heiti"
+                title="扫描二维码"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                </svg>
+              </button>
+            </div>
             <p v-if="statsError" class="text-red-700 text-sm mt-1">{{ statsError }}</p>
           </div>
 
@@ -208,12 +221,23 @@ async function loadAll() {
             <label class="block text-sm font-heiti font-bold mb-2 tracking-wider">
               题单链接（可选）
             </label>
-            <input
-              v-model="problemListUrl"
-              type="url"
-              placeholder="https://leetcode.cn/problem-list/..."
-              class="w-full px-4 py-3 border-2 border-black bg-white text-black focus:outline-none focus:border-gray-600 transition-colors"
-            />
+            <div class="flex gap-2">
+              <input
+                v-model="problemListUrl"
+                type="url"
+                placeholder="https://leetcode.cn/problem-list/..."
+                class="flex-1 px-4 py-3 border-2 border-black bg-white text-black focus:outline-none focus:border-gray-600 transition-colors"
+              />
+              <button
+                @click="openQRScannerProblemList"
+                class="px-4 py-3 bg-gray-100 border-2 border-black text-black hover:bg-gray-200 transition-colors font-heiti"
+                title="扫描题单二维码"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                </svg>
+              </button>
+            </div>
             <p v-if="problemListError" class="text-red-700 text-sm mt-1">{{ problemListError }}</p>
           </div>
         </div>
@@ -346,8 +370,35 @@ async function loadAll() {
       <section v-if="!userStats && !loading" class="text-center py-16 text-gray-500">
         <p class="text-lg">请输入 LeetCode 用户名开始查询</p>
         <p class="text-sm mt-2">输入题单链接可进行做题对比</p>
+        <p class="text-sm mt-2">或点击输入框旁的二维码图标扫描 LeetCode 二维码</p>
       </section>
     </main>
+
+    <!-- 二维码扫描模态框 -->
+    <div v-if="showQRScanner" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white border-4 border-black p-6 max-w-md w-full mx-4">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-heiti font-bold">
+            {{ scannerMode === 'username' ? '扫描用户名二维码' : '扫描题单二维码' }}
+          </h3>
+          <button
+            @click="closeQRScanner"
+            class="text-2xl leading-none hover:text-gray-600"
+          >
+            &times;
+          </button>
+        </div>
+        
+        <QRScanner
+          @scan-success="handleQRScan"
+          @scan-error="handleQRScanError"
+        />
+        
+        <p class="text-sm text-gray-600 mt-4 text-center">
+          {{ scannerMode === 'username' ? '请扫描 LeetCode 个人主页二维码' : '请扫描 LeetCode 题单二维码' }}
+        </p>
+      </div>
+    </div>
 
     <!-- 页脚 -->
     <footer class="border-t-4 border-black mt-16 py-6 px-4">

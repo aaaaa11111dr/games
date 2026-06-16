@@ -17,6 +17,273 @@ interface ParseResponse {
   error?: string
 }
 
+// 代理请求 LeetCode GraphQL API - 获取用户统计
+router.post('/user-stats', async (req: Request, res: Response): Promise<void> => {
+  const { username }: { username: string } = req.body
+
+  if (!username) {
+    res.status(400).json({
+      success: false,
+      error: 'Username is required'
+    })
+    return
+  }
+
+  const query = `
+    query userProblemsProgress($username: String!) {
+      matchedUser(username: $username) {
+        submitStats {
+          acSubmissionNum {
+            difficulty
+            count
+          }
+        }
+      }
+    }
+  `
+
+  const variables = { username }
+
+  try {
+    // 优先尝试英文站
+    let response = await axios.post('https://leetcode.com/graphql', { query, variables }, {
+      headers: { 
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      timeout: 15000
+    })
+
+    let data = response.data
+
+    // 如果英文站失败，尝试中文站
+    if (!data.data?.matchedUser) {
+      response = await axios.post('https://leetcode.cn/graphql', { query, variables }, {
+        headers: { 
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Referer': 'https://leetcode.cn/'
+        },
+        timeout: 15000
+      })
+      data = response.data
+    }
+
+    if (!data.data?.matchedUser) {
+      // 尝试解析用户页面获取数据
+      const stats = await fetchUserStatsFromPage(username)
+      if (stats) {
+        res.json({
+          success: true,
+          data: stats
+        })
+        return
+      }
+      
+      res.status(404).json({
+        success: false,
+        error: data.errors?.[0]?.message || 'User not found or profile is private'
+      })
+      return
+    }
+
+    const stats = data.data.matchedUser.submitStats.acSubmissionNum
+    const result = {
+      totalSolved: 0,
+      easySolved: 0,
+      mediumSolved: 0,
+      hardSolved: 0
+    }
+
+    for (const item of stats) {
+      const count = item.count || 0
+      
+      const difficulty = item.difficulty?.toLowerCase()
+      if (difficulty === 'all') result.totalSolved = count
+      else if (difficulty === 'easy') {
+        result.easySolved = count
+        result.totalSolved += count
+      } else if (difficulty === 'medium') {
+        result.mediumSolved = count
+        result.totalSolved += count
+      } else if (difficulty === 'hard') {
+        result.hardSolved = count
+        result.totalSolved += count
+      }
+    }
+
+    // 如果没有 all 统计，手动计算总数
+    if (result.totalSolved === 0) {
+      result.totalSolved = result.easySolved + result.mediumSolved + result.hardSolved
+    }
+
+    res.json({
+      success: true,
+      data: result
+    })
+  } catch (error) {
+    console.error('Error fetching user stats:', error)
+    
+    // 尝试解析用户页面获取数据
+    try {
+      const stats = await fetchUserStatsFromPage(username)
+      if (stats) {
+        res.json({
+          success: true,
+          data: stats
+        })
+        return
+      }
+    } catch (pageError) {
+      console.error('Error fetching from page:', pageError)
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch user stats. Please check if the username is correct and the profile is public.'
+    })
+  }
+})
+
+// 从用户页面解析统计数据
+async function fetchUserStatsFromPage(username: string): Promise<{ totalSolved: number; easySolved: number; mediumSolved: number; hardSolved: number } | null> {
+  const urls = [
+    `https://leetcode.cn/u/${username}/`,
+    `https://leetcode.com/u/${username}/`
+  ]
+
+  for (const url of urls) {
+    try {
+      const response = await axios.get(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        },
+        timeout: 15000
+      })
+
+      const $ = cheerio.load(response.data)
+      
+      // 尝试从页面中提取统计数据
+      const stats = {
+        totalSolved: 0,
+        easySolved: 0,
+        mediumSolved: 0,
+        hardSolved: 0
+      }
+
+      // 尝试解析各种可能的 HTML 结构
+      const text = $('body').text()
+      
+      // 尝试匹配数字模式
+      const easyMatch = text.match(/简单[\s:]*(\d+)/)
+      const mediumMatch = text.match(/中等[\s:]*(\d+)/)
+      const hardMatch = text.match(/困难[\s:]*(\d+)/)
+      const totalMatch = text.match(/解题[\s:]*(\d+)/)
+
+      if (easyMatch) stats.easySolved = parseInt(easyMatch[1])
+      if (mediumMatch) stats.mediumSolved = parseInt(mediumMatch[1])
+      if (hardMatch) stats.hardSolved = parseInt(hardMatch[1])
+      if (totalMatch) stats.totalSolved = parseInt(totalMatch[1])
+
+      if (stats.totalSolved === 0) {
+        stats.totalSolved = stats.easySolved + stats.mediumSolved + stats.hardSolved
+      }
+
+      if (stats.totalSolved > 0 || stats.easySolved > 0 || stats.mediumSolved > 0 || stats.hardSolved > 0) {
+        return stats
+      }
+    } catch (error) {
+      console.error(`Failed to fetch from ${url}:`, error)
+    }
+  }
+
+  return null
+}
+
+// 代理请求 LeetCode GraphQL API - 获取用户已做题目列表
+router.post('/user-solved-problems', async (req: Request, res: Response): Promise<void> => {
+  const { username }: { username: string } = req.body
+
+  if (!username) {
+    res.status(400).json({
+      success: false,
+      error: 'Username is required'
+    })
+    return
+  }
+
+  const query = `
+    query userProblems($username: String!) {
+      matchedUser(username: $username) {
+        problemsNum(difficulty: all) {
+          difficulty
+          count
+        }
+        allQuestions {
+          questionId
+          title
+          difficulty
+          status
+        }
+      }
+    }
+  `
+
+  const variables = { username }
+
+  try {
+    // 优先尝试英文站
+    let response = await axios.post('https://leetcode.com/graphql', { query, variables }, {
+      headers: { 
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      timeout: 15000
+    })
+
+    let data = response.data
+
+    if (!data.data?.matchedUser) {
+      response = await axios.post('https://leetcode.cn/graphql', { query, variables }, {
+        headers: { 
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        },
+        timeout: 15000
+      })
+      data = response.data
+    }
+
+    if (!data.data?.matchedUser) {
+      res.json({
+        success: true,
+        data: []
+      })
+      return
+    }
+
+    const allQuestions = data.data.matchedUser.allQuestions || []
+    const solvedIds: string[] = []
+
+    for (const q of allQuestions) {
+      if (q.status === 'ac' || q.status === 'solved') {
+        solvedIds.push(String(q.questionId))
+      }
+    }
+
+    res.json({
+      success: true,
+      data: solvedIds
+    })
+  } catch (error) {
+    console.error('Error fetching user solved problems:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch user solved problems'
+    })
+  }
+})
+
 // 从 LeetCode 题单页面解析题目
 router.post('/parse-problem-list', async (req: Request, res: Response): Promise<void> => {
   const { url }: { url: string } = req.body
@@ -30,10 +297,6 @@ router.post('/parse-problem-list', async (req: Request, res: Response): Promise<
   }
 
   try {
-    // 支持 leetcode.cn 和 leetcode.com
-    const isLeetCodeCN = url.includes('leetcode.cn')
-    const baseUrl = isLeetCodeCN ? 'https://leetcode.cn' : 'https://leetcode.com'
-
     const response = await axios.get(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -45,7 +308,6 @@ router.post('/parse-problem-list', async (req: Request, res: Response): Promise<
     const $ = cheerio.load(response.data)
     const problems: Problem[] = []
 
-    // 尝试从页面 script 标签中提取数据（JSON 格式的题目列表）
     const scripts = $('script').map((_, el) => $(el).html()).get()
     let problemListData: Array<Record<string, any>> = []
 
@@ -63,7 +325,6 @@ router.post('/parse-problem-list', async (req: Request, res: Response): Promise<
       }
     }
 
-    // 尝试从 __NEXT_DATA__ 或其他全局变量中获取
     if (problemListData.length === 0) {
       $('script').each((_, el) => {
         const content = $(el).html()
@@ -91,9 +352,7 @@ router.post('/parse-problem-list', async (req: Request, res: Response): Promise<
       })
     }
 
-    // 如果仍然没有找到，尝试从 DOM 中解析
     if (problemListData.length === 0) {
-      // 尝试从题目标题元素中提取
       $('[data-e2e-id], .question-title, .title-cell').each((_, el) => {
         const text = $(el).text().trim()
         const match = text.match(/^(\d+)[\.\、\s]*(.+)$/)
@@ -101,12 +360,11 @@ router.post('/parse-problem-list', async (req: Request, res: Response): Promise<
           problems.push({
             id: match[1],
             title: match[2].trim(),
-            difficulty: 'Medium' // 默认中等难度
+            difficulty: 'Medium'
           })
         }
       })
     } else {
-      // 转换数据格式
       for (const p of problemListData) {
         const id = p.frontend_question_id || p.id || ''
         const title = p.title || p.titleSlug || ''
@@ -124,9 +382,7 @@ router.post('/parse-problem-list', async (req: Request, res: Response): Promise<
       }
     }
 
-    // 如果问题列表仍然为空，尝试更通用的解析方式
     if (problems.length === 0) {
-      // 尝试从链接中提取题号
       $('a[href*="/problems/"]').each((_, el) => {
         const href = $(el).attr('href') || ''
         const match = href.match(/\/problems\/[\w-]+\/(\d+)/)
@@ -140,7 +396,6 @@ router.post('/parse-problem-list', async (req: Request, res: Response): Promise<
       })
     }
 
-    // 尝试从页面标题提取题单名称
     let title = $('title').text().trim()
     if (!title) {
       title = '题单'
@@ -149,7 +404,7 @@ router.post('/parse-problem-list', async (req: Request, res: Response): Promise<
     res.json({
       success: true,
       title,
-      problems: problems.slice(0, 200) // 限制最多 200 题
+      problems: problems.slice(0, 200)
     } as ParseResponse)
   } catch (error) {
     console.error('Error parsing problem list:', error)
@@ -157,42 +412,6 @@ router.post('/parse-problem-list', async (req: Request, res: Response): Promise<
       success: false,
       error: 'Failed to parse problem list. Please check the URL.'
     } as ParseResponse)
-  }
-})
-
-// 获取题目详情
-router.get('/problem/:id', async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params
-
-  try {
-    const graphqlQuery = {
-      query: `
-        query problemDetails($titleSlug: String!) {
-          question(titleSlug: $titleSlug) {
-            questionId
-            title
-            difficulty
-          }
-        }
-      `,
-      variables: { titleSlug: `problem-${id}` }
-    }
-
-    const response = await axios.post('https://leetcode.cn/graphql', graphqlQuery, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-
-    res.json({
-      success: true,
-      data: response.data.data?.question
-    })
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch problem details'
-    })
   }
 })
 

@@ -9,6 +9,7 @@ export default {
     },
     extend: {
       fontFamily: {
+        'fangsong': ['STFangsong', 'FangSong', '仿宋', 'serif'],
         'songti': ['SimSun', 'STSong', 'Songti SC', 'serif'],
         'heiti': ['SimHei', 'STHeiti', 'Heiti SC', 'sans-serif'],
         'newspaper': ['Georgia', 'Times New Roman', 'SimSun', 'serif'],

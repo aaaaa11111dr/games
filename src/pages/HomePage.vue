@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ojConfigs, getOJConfig } from '../config/ojConfigs'
+import { ojConfigs } from '../config/ojConfigs'
 import { ojStore, getAllSummary } from '../store/ojStore'
 import type { AllOJSummary } from '../types'
 
@@ -10,11 +10,8 @@ const summary = ref<AllOJSummary>({ total: 0, byOJ: {}, lastUpdated: '' })
 
 const todayDate = computed(() => {
   const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
   const weekDay = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][now.getDay()]
-  return `${year}年${month}月${day}日 ${weekDay}`
+  return `${now.getFullYear()}年${String(now.getMonth() + 1).padStart(2, '0')}月${String(now.getDate()).padStart(2, '0')}日 ${weekDay}`
 })
 
 const totalSolved = computed(() => summary.value.total)
@@ -23,248 +20,134 @@ const activeOJCount = computed(() => {
   return Object.keys(summary.value.byOJ).filter(key => summary.value.byOJ[key].totalSolved > 0).length
 })
 
-onMounted(() => {
-  summary.value = getAllSummary()
-})
+onMounted(() => { summary.value = getAllSummary() })
 
-function goToOJ(ojId: string) {
-  router.push(`/${ojId}`)
-}
-
-function goToStatistics() {
-  router.push('/statistics')
-}
-
-function goToDaily() {
-  router.push('/daily')
-}
-
-function refreshData() {
-  summary.value = getAllSummary()
-}
-
-function getFormattedDate(isoString: string) {
-  if (!isoString) return '-'
-  try {
-    const date = new Date(isoString)
-    return `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
-  } catch {
-    return '-'
-  }
-}
+function goToOJ(ojId: string) { router.push(`/${ojId}`) }
+function goToStatistics() { router.push('/statistics') }
+function goToDaily() { router.push('/daily') }
+function refreshData() { summary.value = getAllSummary() }
 </script>
 
 <template>
-  <div class="min-h-screen bg-white">
+  <div class="min-h-screen bg-[#f5f1e8] font-fangsong text-black">
+
     <!-- 顶部报头 -->
-    <header class="border-b-8 border-black py-6 px-4">
-      <div class="max-w-6xl mx-auto">
-        <div class="flex justify-between items-end border-b-4 border-double border-gray-800 pb-2">
-          <div class="text-left">
-            <span class="text-sm tracking-widest">{{ todayDate }}</span>
-          </div>
-          <div class="text-center flex-1">
-            <h1 class="text-5xl md:text-6xl font-bold tracking-widest">
-              OJ 刷题日报
-            </h1>
-            <p class="text-lg tracking-widest mt-1 text-gray-700">
-              追踪您的算法学习之旅
-            </p>
-          </div>
-          <div class="text-right text-sm">
-            <span class="tracking-widest">第 壹期</span>
-          </div>
+    <header class="border-b-[10px] border-black px-4 py-5 md:py-8">
+      <div class="max-w-4xl mx-auto text-center">
+        <p class="text-xs md:text-sm tracking-[0.3em] text-gray-700 mb-2">{{ todayDate }} · 第 壹 期</p>
+        <h1 class="text-5xl md:text-7xl font-bold tracking-[0.2em] leading-none">
+          O J 刷 题 日 报
+        </h1>
+        <div class="border-y-2 border-black my-3 md:my-5 py-2 md:py-3">
+          <p class="text-sm md:text-base tracking-[0.4em]">追 踪 您 的 算 法 学 习 之 旅</p>
         </div>
-        <div class="flex justify-between items-center pt-3 text-sm">
-          <span>官方网站：OJ-Tracker.com</span>
-          <span>总发行量：{{ totalSolved }} 题</span>
-          <span class="cursor-pointer hover:underline" @click="refreshData">
-            [刷新数据]
-          </span>
+        <div class="flex flex-wrap justify-between items-center text-xs md:text-sm gap-2">
+          <span class="tracking-widest">总 做 题 {{ totalSolved }} 道</span>
+          <span class="tracking-widest">活 跃 平 台 {{ activeOJCount }} 个</span>
+          <span class="cursor-pointer hover:underline tracking-widest" @click="refreshData">[ 刷 新 数 据 ]</span>
         </div>
       </div>
     </header>
 
-    <!-- 主内容区 -->
-    <main class="max-w-6xl mx-auto px-4 py-8">
-      <!-- 头条新闻卡片 -->
-      <section class="mb-10 border border-gray-800">
-        <div class="bg-black text-white px-4 py-2">
-          <h2 class="text-xl font-bold">要 闻</h2>
-        </div>
-        <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <!-- 总数统计 -->
-          <div class="md:col-span-1 border-r border-gray-300 md:pr-6">
-            <h3 class="text-2xl font-bold mb-2">累计做题</h3>
-            <p class="text-6xl font-bold text-center my-4">{{ totalSolved }}</p>
-            <p class="text-sm text-center text-gray-600">
-              已在 {{ activeOJCount }} 个OJ平台刷题
-            </p>
-            <div class="mt-4">
-              <button
-                @click="goToStatistics"
-                class="w-full border-2 border-black px-4 py-2 font-bold hover:bg-black hover:text-white transition-colors"
-              >
-                查看详细统计
-              </button>
-            </div>
-          </div>
+    <!-- OJ 平台横版列表 -->
+    <main class="max-w-4xl mx-auto px-3 md:px-6 py-6 md:py-10">
 
-          <!-- 每日做题 -->
-          <div class="md:col-span-1 border-r border-gray-300 md:pr-6">
-            <h3 class="text-2xl font-bold mb-2">每日追踪</h3>
-            <p class="text-lg mt-2">
-              记录您的每日刷题情况
-            </p>
-            <div class="text-center my-4">
-              <div class="w-32 h-32 border-4 border-black rounded-full flex items-center justify-center mx-auto cursor-pointer hover:bg-gray-100 transition-colors" @click="goToDaily">
-                <div class="text-center">
-                  <div class="text-4xl font-bold">{{ new Date().getDate() }}</div>
-                  <div class="text-sm">点击记录</div>
-                </div>
-              </div>
-            </div>
-            <div class="mt-4">
-              <button
-                @click="goToDaily"
-                class="w-full border-2 border-black px-4 py-2 font-bold hover:bg-black hover:text-white transition-colors"
-              >
-                进入每日页面
-              </button>
-            </div>
-          </div>
+      <!-- 横版分割标题 -->
+      <div class="flex items-center gap-3 md:gap-6 mb-6 md:mb-8">
+        <div class="flex-1 border-t border-black"></div>
+        <h2 class="text-xl md:text-2xl font-bold tracking-[0.3em]">O J 平 台</h2>
+        <div class="flex-1 border-t border-black"></div>
+      </div>
 
-          <!-- 二维码扫描 -->
-          <div class="md:col-span-1">
-            <h3 class="text-2xl font-bold mb-2">快捷操作</h3>
-            <div class="space-y-3 mt-4">
-              <p class="text-sm">
-                在下方各 OJ 平台输入用户名或二维码，开始追踪您的学习进度。
-              </p>
-              <div class="mt-4 p-4 bg-gray-100 border border-gray-400">
-                <p class="font-bold mb-2">使用说明：</p>
-                <ul class="text-sm list-disc list-inside space-y-1">
-                  <li>点击下方平台卡片进入详情</li>
-                  <li>输入用户名或扫描二维码</li>
-                  <li>数据自动保存到本地</li>
-                  <li>在统计页查看汇总数据</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <!-- 每个 OJ 一张横版大卡片 -->
+      <section class="space-y-4 md:space-y-6">
+        <div
+          v-for="config in ojConfigs"
+          :key="config.id"
+          class="relative border-2 border-black bg-white cursor-pointer hover:bg-[#eae4d4] transition-colors"
+          @click="goToOJ(config.id)"
+        >
+          <!-- 报纸式横线布局 -->
+          <div class="flex items-stretch">
 
-      <!-- 各 OJ 平台 -->
-      <section class="mb-10">
-        <div class="border-b-4 border-double border-gray-800 pb-2 mb-6">
-          <h2 class="text-3xl font-bold">OJ 平 台 列 表</h2>
-          <p class="text-sm text-gray-600">以下是各算法平台的刷题统计</p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div
-            v-for="config in ojConfigs"
-            :key="config.id"
-            class="border-2 border-gray-800 cursor-pointer hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
-            @click="goToOJ(config.id)"
-          >
-            <!-- 标题条 -->
+            <!-- 左侧色块角标 -->
             <div
-              class="px-3 py-2 text-white font-bold text-center"
+              class="w-3 md:w-5 flex-shrink-0"
               :style="{ backgroundColor: config.color }"
-            >
-              <span class="text-2xl mr-2">{{ config.icon }}</span>
-              <span class="text-lg">{{ config.name }}</span>
-            </div>
+            ></div>
 
-            <!-- 内容 -->
-            <div class="p-4">
-              <h3 class="font-bold text-lg mb-2">{{ config.fullName }}</h3>
-              <p class="text-xs text-gray-600 mb-4">{{ config.description }}</p>
+            <!-- 主内容 -->
+            <div class="flex-1 px-4 md:px-6 py-4 md:py-5 flex flex-row items-center gap-4 md:gap-6">
 
-              <!-- 数据 -->
-              <div class="border-t border-dashed border-gray-400 pt-3">
-                <div v-if="ojStore.userData[config.id]?.data" class="space-y-2">
-                  <div class="flex justify-between">
-                    <span class="text-sm">用户：</span>
-                    <span class="font-bold">{{ ojStore.userData[config.id].userId }}</span>
-                  </div>
-                  <div class="flex justify-between items-baseline">
-                    <span class="text-sm">已解决：</span>
-                    <span class="text-3xl font-bold">{{ ojStore.userData[config.id].data?.totalSolved || 0 }}</span>
-                  </div>
-                  <div class="flex justify-between text-xs text-gray-600">
-                    <span>简 {{ ojStore.userData[config.id].data?.easySolved || 0 }}</span>
-                    <span>中 {{ ojStore.userData[config.id].data?.mediumSolved || 0 }}</span>
-                    <span>难 {{ ojStore.userData[config.id].data?.hardSolved || 0 }}</span>
-                  </div>
-                  <div class="text-xs text-gray-500 text-right mt-2">
-                    更新: {{ getFormattedDate(ojStore.userData[config.id].data?.lastUpdated || '') }}
-                  </div>
-                </div>
-                <div v-else class="text-center text-gray-500 py-4">
-                  <p class="text-sm mb-2">暂无数据</p>
-                  <p class="text-xs">点击进入设置</p>
-                </div>
+              <!-- 大标题：OJ 名称 -->
+              <div class="flex-1 min-w-0">
+                <h3 class="text-3xl sm:text-4xl md:text-5xl font-bold tracking-[0.08em] leading-tight truncate">
+                  {{ config.name }}
+                </h3>
+                <p class="text-xs md:text-sm text-gray-600 mt-1 tracking-widest">
+                  {{ config.description }}
+                </p>
+              </div>
+
+              <!-- 右侧：做题数据 -->
+              <div class="text-right flex-shrink-0 border-l border-dashed border-gray-400 pl-4 md:pl-6">
+                <template v-if="ojStore.userData[config.id]?.data?.totalSolved">
+                  <p class="text-[10px] md:text-xs tracking-widest text-gray-600 mb-1">已 解 决</p>
+                  <p class="text-4xl md:text-6xl font-bold leading-none">{{ ojStore.userData[config.id].data!.totalSolved }}</p>
+                  <p class="text-[10px] md:text-xs text-gray-500 mt-1 truncate max-w-[120px] md:max-w-none">
+                    @{{ ojStore.userData[config.id].userId }}
+                  </p>
+                </template>
+                <template v-else>
+                  <p class="text-[10px] md:text-xs tracking-widest text-gray-400 mb-1">暂 无 数 据</p>
+                  <p class="text-2xl md:text-3xl font-bold text-gray-400">—</p>
+                  <p class="text-[10px] md:text-xs text-gray-500 mt-1">点 击 进 入</p>
+                </template>
               </div>
             </div>
-
-            <!-- 底部 -->
-            <div class="border-t-2 border-gray-800 px-3 py-2 bg-gray-100 text-center">
-              <span class="text-sm font-bold tracking-wider">点 击 进 入 →</span>
-            </div>
           </div>
+
+          <!-- 底部双线装饰 -->
+          <div class="border-t border-double border-black"></div>
         </div>
       </section>
 
-      <!-- 统计概览 -->
-      <section class="mb-10 border border-gray-800">
-        <div class="bg-gray-200 border-b-2 border-gray-800 px-4 py-2">
-          <h2 class="text-xl font-bold">数据统计</h2>
+      <!-- 快捷操作栏 -->
+      <section class="mt-10 md:mt-14">
+        <div class="flex items-center gap-3 md:gap-6 mb-4 md:mb-6">
+          <div class="flex-1 border-t border-black"></div>
+          <h2 class="text-xl md:text-2xl font-bold tracking-[0.3em]">快 捷 栏</h2>
+          <div class="flex-1 border-t border-black"></div>
         </div>
-        <div class="p-6">
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="text-center p-4 border border-gray-300">
-              <p class="text-sm text-gray-600 mb-1">LeetCode</p>
-              <p class="text-2xl font-bold">{{ summary.byOJ['leetcode']?.totalSolved || 0 }}</p>
-            </div>
-            <div class="text-center p-4 border border-gray-300">
-              <p class="text-sm text-gray-600 mb-1">Codeforces</p>
-              <p class="text-2xl font-bold">{{ summary.byOJ['codeforces']?.totalSolved || 0 }}</p>
-            </div>
-            <div class="text-center p-4 border border-gray-300">
-              <p class="text-sm text-gray-600 mb-1">洛谷</p>
-              <p class="text-2xl font-bold">{{ summary.byOJ['luogu']?.totalSolved || 0 }}</p>
-            </div>
-            <div class="text-center p-4 border border-gray-300">
-              <p class="text-sm text-gray-600 mb-1">AtCoder</p>
-              <p class="text-2xl font-bold">{{ summary.byOJ['atcoder']?.totalSolved || 0 }}</p>
-            </div>
-          </div>
-          <div class="mt-4 text-center">
-            <button
-              @click="goToStatistics"
-              class="border-2 border-black px-8 py-2 font-bold hover:bg-black hover:text-white transition-colors"
-            >
-              查看饼图统计
-            </button>
-          </div>
+
+        <div class="grid grid-cols-2 gap-3 md:gap-4">
+          <button
+            @click="goToStatistics"
+            class="border-2 border-black bg-white px-4 py-4 md:py-6 hover:bg-black hover:text-white transition-colors text-center"
+          >
+            <p class="text-base md:text-lg font-bold tracking-[0.3em]">统 计 图 表</p>
+            <p class="text-[10px] md:text-xs mt-1 tracking-widest text-gray-500">查看饼图汇总</p>
+          </button>
+          <button
+            @click="goToDaily"
+            class="border-2 border-black bg-white px-4 py-4 md:py-6 hover:bg-black hover:text-white transition-colors text-center"
+          >
+            <p class="text-base md:text-lg font-bold tracking-[0.3em]">每 日 记 录</p>
+            <p class="text-[10px] md:text-xs mt-1 tracking-widest text-gray-500">打卡今日刷题</p>
+          </button>
         </div>
       </section>
 
-      <!-- 广告位 / 提示 -->
-      <section class="text-center text-xs text-gray-500 pb-6">
-        <p>本报表数据来源于各大OJ平台官方数据接口</p>
-        <p>数据仅存储在您的本地浏览器中 · 保护您的隐私</p>
+      <!-- 底部说明 -->
+      <section class="mt-10 md:mt-14 border-t-2 border-black pt-4 text-center text-[10px] md:text-xs text-gray-500 tracking-widest space-y-1">
+        <p>本 报 数 据 来 源 于 各 OJ 官 方 接 口</p>
+        <p>数 据 仅 存 储 在 本 地 浏 览 器 · 保 护 您 的 隐 私</p>
       </section>
     </main>
 
-    <!-- 底部 -->
-    <footer class="border-t-4 border-double border-black py-4 px-4">
-      <div class="max-w-6xl mx-auto text-center text-sm">
-        <p>OJ-Tracker · 2024 · 祝您刷题愉快！</p>
-      </div>
+    <!-- 页脚 -->
+    <footer class="border-t-[10px] border-black py-4 text-center text-xs md:text-sm tracking-[0.4em] text-gray-700">
+      O J - T r a c k e r · 祝 您 刷 题 愉 快
     </footer>
   </div>
 </template>

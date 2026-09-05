@@ -21,7 +21,7 @@ const router = useRouter()
 
 const records = ref<any[]>([])
 const newProblem = reactive({
-  oj: 'leetcode',
+  oj: 'codeforces',
   problemId: '',
   title: ''
 })

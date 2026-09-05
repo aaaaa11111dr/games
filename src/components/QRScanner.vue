@@ -77,7 +77,7 @@ onUnmounted(() => {
 <template>
   <div class="qr-scanner">
     <div class="scanner-header mb-4">
-      <h3 class="text-lg font-heiti font-bold">扫描 LeetCode 二维码</h3>
+      <h3 class="text-lg font-heiti font-bold">扫描 OJ 二维码</h3>
       <p class="text-sm text-gray-600 mt-1">请将二维码对准扫描框</p>
     </div>
     

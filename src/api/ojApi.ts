@@ -1,65 +1,5 @@
 import type { OJData, Problem, ProblemList } from '../types'
 
-export async function fetchLeetCodeData(username: string): Promise<OJData> {
-  const query = `query userProblemsProgress($username: String!) { matchedUser(username: $username) { submitStats { acSubmissionNum { difficulty count } } } }`
-  
-  try {
-    const response = await fetch('https://leetcode.com/graphql', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0'
-      },
-      body: JSON.stringify({ query, variables: { username } })
-    })
-    const data = await response.json()
-    const stats = data.data?.matchedUser?.submitStats?.acSubmissionNum
-    
-    if (stats) {
-      let total = 0, easy = 0, medium = 0, hard = 0
-      for (const item of stats) {
-        const diff = item.difficulty?.toLowerCase()
-        const count = item.count || 0
-        if (diff === 'easy') easy = count
-        else if (diff === 'medium') medium = count
-        else if (diff === 'hard') hard = count
-        else if (diff === 'all') total = count
-      }
-      if (total === 0) total = easy + medium + hard
-      return { userId: username, totalSolved: total, easySolved: easy, mediumSolved: medium, hardSolved: hard, lastUpdated: new Date().toISOString() }
-    }
-  } catch {}
-
-  try {
-    const response = await fetch('https://leetcode.cn/graphql', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0'
-      },
-      body: JSON.stringify({ query, variables: { username } })
-    })
-    const data = await response.json()
-    const stats = data.data?.matchedUser?.submitStats?.acSubmissionNum
-    
-    if (stats) {
-      let total = 0, easy = 0, medium = 0, hard = 0
-      for (const item of stats) {
-        const diff = item.difficulty?.toLowerCase()
-        const count = item.count || 0
-        if (diff === 'easy') easy = count
-        else if (diff === 'medium') medium = count
-        else if (diff === 'hard') hard = count
-        else if (diff === 'all') total = count
-      }
-      if (total === 0) total = easy + medium + hard
-      return { userId: username, totalSolved: total, easySolved: easy, mediumSolved: medium, hardSolved: hard, lastUpdated: new Date().toISOString() }
-    }
-  } catch {}
-
-  throw new Error('无法获取 LeetCode 数据，请检查用户名或使用手动输入')
-}
-
 export async function fetchCodeforcesData(username: string): Promise<OJData> {
   const response = await fetch(`https://codeforces.com/api/user.status?handle=${encodeURIComponent(username)}`)
   const data = await response.json()
@@ -91,28 +31,6 @@ export async function fetchCodeforcesData(username: string): Promise<OJData> {
     easySolved: easy,
     mediumSolved: medium,
     hardSolved: hard,
-    lastUpdated: new Date().toISOString()
-  }
-}
-
-export async function fetchLanqiaoData(username: string): Promise<OJData> {
-  return {
-    userId: username,
-    totalSolved: 0,
-    easySolved: 0,
-    mediumSolved: 0,
-    hardSolved: 0,
-    lastUpdated: new Date().toISOString()
-  }
-}
-
-export async function fetchHDUData(username: string): Promise<OJData> {
-  return {
-    userId: username,
-    totalSolved: 0,
-    easySolved: 0,
-    mediumSolved: 0,
-    hardSolved: 0,
     lastUpdated: new Date().toISOString()
   }
 }
@@ -157,17 +75,6 @@ export async function fetchLuoguData(username: string): Promise<OJData> {
   }
 }
 
-export async function fetchPTAData(username: string): Promise<OJData> {
-  return {
-    userId: username,
-    totalSolved: 0,
-    easySolved: 0,
-    mediumSolved: 0,
-    hardSolved: 0,
-    lastUpdated: new Date().toISOString()
-  }
-}
-
 export async function fetchAtCoderData(username: string): Promise<OJData> {
   try {
     const response = await fetch(`https://atcoder.jp/users/${encodeURIComponent(username)}/history/json`)
@@ -208,17 +115,6 @@ export async function fetchAtCoderData(username: string): Promise<OJData> {
       hardSolved: 0,
       lastUpdated: new Date().toISOString()
     }
-  }
-}
-
-export async function fetchNowcoderData(username: string): Promise<OJData> {
-  return {
-    userId: username,
-    totalSolved: 0,
-    easySolved: 0,
-    mediumSolved: 0,
-    hardSolved: 0,
-    lastUpdated: new Date().toISOString()
   }
 }
 

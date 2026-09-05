@@ -1,5 +1,35 @@
 import type { OJData, Problem, ProblemList } from '../types'
 
+export async function fetchLeetCodeData(username: string): Promise<OJData> {
+  const query = `query userProblemsProgress($username: String!) { matchedUser(username: $username) { submitStats { acSubmissionNum { difficulty count } } } }`
+
+  try {
+    const response = await fetch('https://leetcode.com/graphql', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables: { username } })
+    })
+    const data = await response.json()
+    const stats = data.data?.matchedUser?.submitStats?.acSubmissionNum
+
+    if (stats) {
+      let total = 0, easy = 0, medium = 0, hard = 0
+      for (const item of stats) {
+        const diff = item.difficulty?.toLowerCase()
+        const count = item.count || 0
+        if (diff === 'easy') easy = count
+        else if (diff === 'medium') medium = count
+        else if (diff === 'hard') hard = count
+        else if (diff === 'all') total = count
+      }
+      if (total === 0) total = easy + medium + hard
+      return { userId: username, totalSolved: total, easySolved: easy, mediumSolved: medium, hardSolved: hard, lastUpdated: new Date().toISOString() }
+    }
+  } catch {}
+
+  throw new Error('无法获取 LeetCode 数据，请检查用户名')
+}
+
 export async function fetchCodeforcesData(username: string): Promise<OJData> {
   const response = await fetch(`https://codeforces.com/api/user.status?handle=${encodeURIComponent(username)}`)
   const data = await response.json()

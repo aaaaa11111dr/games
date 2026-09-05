@@ -2,6 +2,15 @@ import type { OJConfig } from '../types'
 
 export const ojConfigs: OJConfig[] = [
   {
+    id: 'leetcode',
+    name: 'LeetCode',
+    fullName: 'LeetCode',
+    baseUrl: 'https://leetcode.com',
+    color: '#f89f1b',
+    icon: '⚡',
+    description: '全球最大的算法训练平台'
+  },
+  {
     id: 'codeforces',
     name: 'Codeforces',
     fullName: 'Codeforces',

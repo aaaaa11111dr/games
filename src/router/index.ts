@@ -7,6 +7,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../pages/HomePage.vue')
   },
   {
+    path: '/leetcode',
+    name: 'LeetCode',
+    component: () => import('../pages/LeetCodePage.vue')
+  },
+  {
     path: '/codeforces',
     name: 'Codeforces',
     component: () => import('../pages/CodeforcesPage.vue')

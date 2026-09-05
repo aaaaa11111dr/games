@@ -224,7 +224,11 @@ function getFormattedDate(isoString: string) {
           <h2 class="text-xl font-bold">数据统计</h2>
         </div>
         <div class="p-6">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="text-center p-4 border border-gray-300">
+              <p class="text-sm text-gray-600 mb-1">LeetCode</p>
+              <p class="text-2xl font-bold">{{ summary.byOJ['leetcode']?.totalSolved || 0 }}</p>
+            </div>
             <div class="text-center p-4 border border-gray-300">
               <p class="text-sm text-gray-600 mb-1">Codeforces</p>
               <p class="text-2xl font-bold">{{ summary.byOJ['codeforces']?.totalSolved || 0 }}</p>

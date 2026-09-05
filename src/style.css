@@ -2,97 +2,90 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============ 全局：仿宋优先 ============ */
 :root {
-  font-family: 'SimSun', 'STSong', 'Songti SC', Georgia, 'Times New Roman', serif;
-  line-height: 1.8;
+  /* 仿宋字体栈 —— 桌面端优先用 STFangsong/FangSong，手机 fallback 到宋体/serif */
+  font-family: 'STFangsong', 'FangSong', 'FangSong_GB2312',
+               'STSong', 'SimSun', 'Songti SC',
+               Georgia, 'Times New Roman', serif;
+  line-height: 1.75;
   font-weight: 400;
   font-size: 16px;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "liga", "kern";
 }
 
 body {
-  background-color: #FFFFFF;
-  color: #000000;
+  background-color: #f5f1e8;
+  color: #111;
   min-height: 100vh;
-}
-
-/* 报纸排版样式 */
-.newspaper-title {
-  font-family: 'SimHei', 'STHeiti', 'Heiti SC', sans-serif;
-  font-weight: bold;
-  letter-spacing: 0.1em;
-}
-
-.newspaper-divider {
-  border-top: 1px solid #000000;
-  margin: 1.5rem 0;
-}
-
-.newspaper-divider-double {
-  border-top: 3px double #000000;
-  margin: 1.5rem 0;
-}
-
-.newspaper-section {
-  border-bottom: 1px solid #CCCCCC;
-  padding-bottom: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.newspaper-column {
-  column-rule: 1px solid #CCCCCC;
-  column-gap: 2rem;
-}
-
-/* 加载动画 */
-@keyframes pulse-newspaper {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.animate-pulse-newspaper {
-  animation: pulse-newspaper 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* 滚动条样式 */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #999;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #666;
-}
-
-/* 输入框样式 */
-input, textarea {
+  margin: 0;
   font-family: inherit;
 }
 
-/* 按钮样式 */
+/* 所有标题类：强制斜体仿宋 */
+.oj-title-italic {
+  font-family: 'STFangsong', 'FangSong', 'FangSong_GB2312',
+               'STSong', 'SimSun', serif;
+  font-style: italic !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.05em;
+}
+
+/* 大标题：字距宽一点，报纸感 */
+.newspaper-headline {
+  font-family: 'STFangsong', 'FangSong',
+               'STSong', 'SimSun', serif;
+  font-style: italic !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.15em;
+  text-align: center;
+}
+
+/* 小节标题：仿宋斜体 + 两侧横线 */
+.newspaper-section-title {
+  font-family: 'STFangsong', 'FangSong',
+               'STSong', 'SimSun', serif;
+  font-style: italic !important;
+  font-weight: 400 !important;
+}
+
+/* 报纸装饰：双线分隔 */
+.newspaper-double-line {
+  border-top: 3px double #111;
+}
+
+/* 输入按钮继承字体 */
+input, textarea, button, select {
+  font-family: inherit;
+}
+
+/* 去掉所有默认按钮边框/阴影 */
 button {
-  font-family: inherit;
+  background: none;
+  border: none;
   cursor: pointer;
+  color: inherit;
 }
 
-/* 选中样式 */
+/* 选中文本 */
 ::selection {
-  background: #000;
-  color: #fff;
+  background: #111;
+  color: #f5f1e8;
+}
+
+/* 滚动条 —— 细、低调 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #bbb;
+  border-radius: 0;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }

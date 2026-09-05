@@ -151,14 +151,14 @@ const difficultyChartOptions = {
 </script>
 
 <template>
-  <div class="min-h-screen bg-white text-black font-songti">
+  <div class="min-h-screen ">
     <header class="border-b-4 border-black py-4 px-4">
       <div class="max-w-6xl mx-auto flex justify-between items-center">
         <button @click="goBack" class="flex items-center hover:opacity-70">
-          <span class="text-xl font-bold">← 返回首页</span>
+          <span class="text-xl ">← 返回首页</span>
         </button>
-        <h1 class="text-3xl font-bold">统 计 报 告</h1>
-        <button @click="refreshData" class="text-sm border-2 border-black px-4 py-1 font-bold hover:bg-gray-200">
+        <h1 class="text-3xl ">统 计 报 告</h1>
+        <button @click="refreshData" class="text-sm px-3 py-1 border border-black  hover:bg-gray-100">
           刷新数据
         </button>
       </div>
@@ -166,14 +166,14 @@ const difficultyChartOptions = {
 
     <main class="max-w-6xl mx-auto px-4 py-8">
       <!-- 总体概览 -->
-      <section class="mb-10 border border-gray-800">
+      <section class="mb-10 border-t border-black border-b border-black">
         <div class="bg-black text-white px-4 py-2">
-          <h2 class="text-xl font-bold">总 体 概 览</h2>
+          <h2 class="text-xl ">总 体 概 览</h2>
         </div>
         <div class="p-6">
           <div class="text-center mb-8">
             <p class="text-sm text-gray-600 mb-2">累计做题总数</p>
-            <p class="text-7xl font-bold">{{ summary.total }}</p>
+            <p class="text-7xl ">{{ summary.total }}</p>
             <p class="text-lg mt-2">题</p>
           </div>
 
@@ -183,10 +183,10 @@ const difficultyChartOptions = {
               :key="ojId"
               class="p-4 border border-gray-300 text-center"
             >
-              <p class="text-sm font-bold mb-1">
+              <p class="text-sm  mb-1">
                 {{ getOJConfig(ojId)?.name || ojId }}
               </p>
-              <p class="text-3xl font-bold" :style="{ color: getOJConfig(ojId)?.color || '#000' }">
+              <p class="text-3xl " :style="{ color: getOJConfig(ojId)?.color || '#000' }">
                 {{ summary.byOJ[ojId]?.totalSolved || 0 }}
               </p>
               <p class="text-xs text-gray-600 mt-1">
@@ -200,9 +200,9 @@ const difficultyChartOptions = {
       </section>
 
       <!-- 饼图：各 OJ 分布 -->
-      <section class="mb-10 border border-gray-800">
-        <div class="bg-gray-200 border-b-2 border-gray-800 px-4 py-2">
-          <h2 class="text-xl font-bold">各 OJ 做题分布</h2>
+      <section class="mb-10 border-t border-black border-b border-black">
+        <div class="px-2 py-1">
+          <h2 class="text-xl ">各 OJ 做题分布</h2>
         </div>
         <div class="p-6">
           <div v-if="summary.total > 0" style="height: 400px">
@@ -219,9 +219,9 @@ const difficultyChartOptions = {
       </section>
 
       <!-- 柱状图：难度分布 -->
-      <section class="mb-10 border border-gray-800">
-        <div class="bg-gray-200 border-b-2 border-gray-800 px-4 py-2">
-          <h2 class="text-xl font-bold">各 OJ 难度分布</h2>
+      <section class="mb-10 border-t border-black border-b border-black">
+        <div class="px-2 py-1">
+          <h2 class="text-xl ">各 OJ 难度分布</h2>
         </div>
         <div class="p-6">
           <div v-if="summary.total > 0" style="height: 400px">
@@ -238,22 +238,22 @@ const difficultyChartOptions = {
       </section>
 
       <!-- 详细数据表 -->
-      <section class="mb-10 border border-gray-800">
+      <section class="mb-10 border-t border-black border-b border-black">
         <div class="bg-black text-white px-4 py-2">
-          <h2 class="text-xl font-bold">详 细 数 据</h2>
+          <h2 class="text-xl ">详 细 数 据</h2>
         </div>
         <div class="p-6">
           <div class="overflow-x-auto">
             <table class="w-full border-collapse border border-gray-400">
               <thead>
-                <tr class="bg-gray-200">
-                  <th class="border border-gray-400 p-3 text-left">平台</th>
-                  <th class="border border-gray-400 p-3 text-center">用户名</th>
-                  <th class="border border-gray-400 p-3 text-center">总计</th>
-                  <th class="border border-gray-400 p-3 text-center">简单</th>
-                  <th class="border border-gray-400 p-3 text-center">中等</th>
-                  <th class="border border-gray-400 p-3 text-center">困难</th>
-                  <th class="border border-gray-400 p-3 text-center">占比</th>
+                <tr class="bg-gray-100">
+                  <th class="p-3 border-t border-b border-gray-400 border-l-0 border-r-0 text-left">平台</th>
+                  <th class="p-3 text-center border-t border-b border-gray-400 border-l-0 border-r-0">用户名</th>
+                  <th class="p-3 text-center border-t border-b border-gray-400 border-l-0 border-r-0">总计</th>
+                  <th class="p-3 text-center border-t border-b border-gray-400 border-l-0 border-r-0">简单</th>
+                  <th class="p-3 text-center border-t border-b border-gray-400 border-l-0 border-r-0">中等</th>
+                  <th class="p-3 text-center border-t border-b border-gray-400 border-l-0 border-r-0">困难</th>
+                  <th class="p-3 text-center border-t border-b border-gray-400 border-l-0 border-r-0">占比</th>
                 </tr>
               </thead>
               <tbody>
@@ -262,42 +262,42 @@ const difficultyChartOptions = {
                   :key="ojId"
                   class="hover:bg-gray-50"
                 >
-                  <td class="border border-gray-400 p-3 font-bold">
+                  <td class="p-3 border-t border-b border-gray-400 border-l-0 border-r-0 ">
                     {{ getOJConfig(ojId)?.fullName || ojId }}
                   </td>
-                  <td class="border border-gray-400 p-3 text-center">
+                  <td class="p-3 text-center border-t border-b border-gray-400 border-l-0 border-r-0">
                     {{ summary.byOJ[ojId]?.userId || '-' }}
                   </td>
-                  <td class="border border-gray-400 p-3 text-center font-bold">
+                  <td class="p-3 text-center border-t border-b border-gray-400 border-l-0 border-r-0 ">
                     {{ summary.byOJ[ojId]?.totalSolved || 0 }}
                   </td>
-                  <td class="border border-gray-400 p-3 text-center text-green-700">
+                  <td class="p-3 text-center border-t border-b border-gray-400 border-l-0 border-r-0 text-green-700">
                     {{ summary.byOJ[ojId]?.easySolved || 0 }}
                   </td>
-                  <td class="border border-gray-400 p-3 text-center text-amber-700">
+                  <td class="p-3 text-center border-t border-b border-gray-400 border-l-0 border-r-0 text-amber-700">
                     {{ summary.byOJ[ojId]?.mediumSolved || 0 }}
                   </td>
-                  <td class="border border-gray-400 p-3 text-center text-red-700">
+                  <td class="p-3 text-center border-t border-b border-gray-400 border-l-0 border-r-0 text-red-700">
                     {{ summary.byOJ[ojId]?.hardSolved || 0 }}
                   </td>
-                  <td class="border border-gray-400 p-3 text-center">
+                  <td class="p-3 text-center border-t border-b border-gray-400 border-l-0 border-r-0">
                     {{ summary.total > 0 ? ((summary.byOJ[ojId]?.totalSolved || 0) / summary.total * 100).toFixed(1) : '0' }}%
                   </td>
                 </tr>
-                <tr class="bg-gray-100 font-bold">
-                  <td class="border border-gray-400 p-3">合计</td>
-                  <td class="border border-gray-400 p-3 text-center">-</td>
-                  <td class="border border-gray-400 p-3 text-center">{{ summary.total }}</td>
-                  <td class="border border-gray-400 p-3 text-center text-green-700">
+                <tr class="bg-gray-50 ">
+                  <td class="p-3 border-t border-b border-gray-400 border-l-0 border-r-0">合计</td>
+                  <td class="p-3 text-center border-t border-b border-gray-400 border-l-0 border-r-0">-</td>
+                  <td class="p-3 text-center border-t border-b border-gray-400 border-l-0 border-r-0">{{ summary.total }}</td>
+                  <td class="p-3 text-center border-t border-b border-gray-400 border-l-0 border-r-0 text-green-700">
                     {{ Object.values(summary.byOJ).reduce((s, o: any) => s + (o?.easySolved || 0), 0) }}
                   </td>
-                  <td class="border border-gray-400 p-3 text-center text-amber-700">
+                  <td class="p-3 text-center border-t border-b border-gray-400 border-l-0 border-r-0 text-amber-700">
                     {{ Object.values(summary.byOJ).reduce((s, o: any) => s + (o?.mediumSolved || 0), 0) }}
                   </td>
-                  <td class="border border-gray-400 p-3 text-center text-red-700">
+                  <td class="p-3 text-center border-t border-b border-gray-400 border-l-0 border-r-0 text-red-700">
                     {{ Object.values(summary.byOJ).reduce((s, o: any) => s + (o?.hardSolved || 0), 0) }}
                   </td>
-                  <td class="border border-gray-400 p-3 text-center">100%</td>
+                  <td class="p-3 text-center border-t border-b border-gray-400 border-l-0 border-r-0">100%</td>
                 </tr>
               </tbody>
             </table>

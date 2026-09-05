@@ -134,14 +134,14 @@ const ojNameMap = computed(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-white text-black font-songti">
+  <div class="min-h-screen ">
     <header class="border-b-4 border-black py-4 px-4">
       <div class="max-w-6xl mx-auto flex justify-between items-center">
         <button @click="goBack" class="flex items-center hover:opacity-70">
-          <span class="text-xl font-bold">← 返回首页</span>
+          <span class="text-xl ">← 返回首页</span>
         </button>
-        <h1 class="text-3xl font-bold">每 日 做 题 统 计</h1>
-        <button @click="refreshData" class="text-sm border-2 border-black px-4 py-1 font-bold hover:bg-gray-200">
+        <h1 class="text-3xl ">每 日 做 题 统 计</h1>
+        <button @click="refreshData" class="text-sm px-3 py-1 border border-black  hover:bg-gray-100">
           刷新
         </button>
       </div>
@@ -149,25 +149,25 @@ const ojNameMap = computed(() => {
 
     <main class="max-w-6xl mx-auto px-4 py-8">
       <!-- 今日统计 -->
-      <section class="mb-10 border border-gray-800">
+      <section class="mb-10 border-t border-black border-b border-black">
         <div class="bg-black text-white px-4 py-2">
-          <h2 class="text-xl font-bold">今 日 概 览</h2>
+          <h2 class="text-xl ">今 日 概 览</h2>
         </div>
         <div class="p-6">
           <div class="grid grid-cols-3 gap-6">
             <div class="text-center">
               <p class="text-sm text-gray-600 mb-2">今日已做题</p>
-              <p class="text-6xl font-bold">{{ todayCount }}</p>
+              <p class="text-6xl ">{{ todayCount }}</p>
               <p class="text-lg mt-2">题</p>
             </div>
             <div class="text-center">
               <p class="text-sm text-gray-600 mb-2">30 天做题</p>
-              <p class="text-6xl font-bold">{{ totalIn30Days }}</p>
+              <p class="text-6xl ">{{ totalIn30Days }}</p>
               <p class="text-lg mt-2">题</p>
             </div>
             <div class="text-center">
               <p class="text-sm text-gray-600 mb-2">活跃天数</p>
-              <p class="text-6xl font-bold">{{ activeDays }}/30</p>
+              <p class="text-6xl ">{{ activeDays }}/30</p>
               <p class="text-lg mt-2">天</p>
             </div>
           </div>
@@ -175,17 +175,17 @@ const ojNameMap = computed(() => {
       </section>
 
       <!-- 手动添加题目 -->
-      <section class="mb-10 border border-gray-800">
-        <div class="bg-gray-200 border-b-2 border-gray-800 px-4 py-2">
-          <h2 class="text-xl font-bold">记 录 今 日 做 题</h2>
+      <section class="mb-10 border-t border-black border-b border-black">
+        <div class="px-2 py-1">
+          <h2 class="text-xl ">记 录 今 日 做 题</h2>
         </div>
         <div class="p-6">
           <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div>
-              <label class="block text-sm font-bold mb-2">OJ 平台</label>
+              <label class="block text-sm  mb-2">OJ 平台</label>
               <select
                 v-model="newProblem.oj"
-                class="w-full px-3 py-2 border-2 border-black bg-white text-black focus:outline-none focus:border-gray-600"
+                class="w-full px-3 py-2 border-b border-black bg-transparent text-black focus:outline-none focus:border-gray-600"
               >
                 <option v-for="config in ojConfigs" :key="config.id" :value="config.id">
                   {{ config.icon }} {{ config.name }}
@@ -193,28 +193,28 @@ const ojNameMap = computed(() => {
               </select>
             </div>
             <div class="md:col-span-1">
-              <label class="block text-sm font-bold mb-2">题目编号</label>
+              <label class="block text-sm  mb-2">题目编号</label>
               <input
                 v-model="newProblem.problemId"
                 type="text"
                 placeholder="1234"
-                class="w-full px-3 py-2 border-2 border-black bg-white text-black focus:outline-none focus:border-gray-600"
+                class="w-full px-3 py-2 border-b border-black bg-transparent text-black focus:outline-none focus:border-gray-600"
               />
             </div>
             <div class="md:col-span-2">
-              <label class="block text-sm font-bold mb-2">题目名称</label>
+              <label class="block text-sm  mb-2">题目名称</label>
               <input
                 v-model="newProblem.title"
                 type="text"
                 placeholder="题目描述..."
-                class="w-full px-3 py-2 border-2 border-black bg-white text-black focus:outline-none focus:border-gray-600"
+                class="w-full px-3 py-2 border-b border-black bg-transparent text-black focus:outline-none focus:border-gray-600"
               />
             </div>
           </div>
           <div class="mt-4 text-center">
             <button
               @click="addNewProblem"
-              class="px-8 py-2 bg-black text-white font-bold border-2 border-black hover:bg-gray-800 transition-colors"
+              class="px-8 py-2 bg-black text-white  border-2 border-black hover:bg-gray-800 transition-colors"
             >
               记录到今日
             </button>
@@ -223,9 +223,9 @@ const ojNameMap = computed(() => {
       </section>
 
       <!-- 趋势图 -->
-      <section class="mb-10 border border-gray-800">
-        <div class="bg-gray-200 border-b-2 border-gray-800 px-4 py-2">
-          <h2 class="text-xl font-bold">30 天趋势图</h2>
+      <section class="mb-10 border-t border-black border-b border-black">
+        <div class="px-2 py-1">
+          <h2 class="text-xl ">30 天趋势图</h2>
         </div>
         <div class="p-6">
           <div v-if="totalIn30Days > 0" style="height: 400px">
@@ -238,9 +238,9 @@ const ojNameMap = computed(() => {
       </section>
 
       <!-- 每日详情 -->
-      <section class="mb-10 border border-gray-800">
+      <section class="mb-10 border-t border-black border-b border-black">
         <div class="bg-black text-white px-4 py-2">
-          <h2 class="text-xl font-bold">每 日 详 情</h2>
+          <h2 class="text-xl ">每 日 详 情</h2>
         </div>
         <div class="p-6">
           <div class="space-y-6">
@@ -249,8 +249,8 @@ const ojNameMap = computed(() => {
               :key="record.date"
               class="border border-gray-300"
             >
-              <div class="bg-gray-100 px-4 py-2 flex justify-between items-center border-b border-gray-300">
-                <span class="font-bold">{{ formatDate(record.date) }}</span>
+              <div class="bg-gray-50 px-4 py-2 flex justify-between items-center border-b border-gray-300">
+                <span class="">{{ formatDate(record.date) }}</span>
                 <span class="text-sm">
                   共 {{ record.totalCount || 0 }} 题
                 </span>
@@ -267,7 +267,7 @@ const ojNameMap = computed(() => {
                         {{ problem.time || '' }}
                       </span>
                       <span
-                        class="font-bold mr-2 text-xs px-2 py-0.5 border border-gray-400"
+                        class=" mr-2 text-xs px-2 py-0.5 border border-gray-400"
                       >
                         {{ ojNameMap[problem.oj] || problem.oj }}
                       </span>

@@ -14,11 +14,6 @@ const todayDate = computed(() => {
   return `${now.getFullYear()}年${String(now.getMonth() + 1).padStart(2, '0')}月${String(now.getDate()).padStart(2, '0')}日 ${weekDay}`
 })
 
-const totalSolved = computed(() => summary.value.total)
-const activeOJCount = computed(() =>
-  Object.keys(summary.value.byOJ).filter(key => summary.value.byOJ[key].totalSolved > 0).length
-)
-
 onMounted(() => { summary.value = getAllSummary() })
 
 function goToOJ(ojId: string) { router.push(`/${ojId}`) }
@@ -28,105 +23,110 @@ function refreshData() { summary.value = getAllSummary() }
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#f5f1e8] font-fangsong text-black">
+  <div class="min-h-screen">
 
-    <!-- 顶部报头 -->
-    <header class="border-b-[6px] border-double border-black px-4 py-6 md:py-10">
-      <div class="max-w-5xl mx-auto text-center">
-        <p class="text-xs md:text-sm tracking-[0.4em] text-gray-700">{{ todayDate }} · 第 壹 期</p>
-        <h1 class="italic text-5xl md:text-7xl font-bold tracking-[0.2em] leading-none mt-3">
+    <!-- 顶部报头：双下划线 + 大标题 + 副标题双线包 -->
+    <header class="px-4 pt-8 pb-4 md:pt-12 md:pb-6">
+      <div class="max-w-4xl mx-auto text-center">
+        <!-- 日期行 -->
+        <p class="text-sm md:text-base tracking-[0.4em] text-gray-600">
+          {{ todayDate }} · 第 壹 期
+        </p>
+
+        <!-- 大标题：仿宋斜体，不用任何粗体 -->
+        <h1 class="newspaper-headline text-5xl md:text-7xl my-4 md:my-6">
           O J 刷 题 日 报
         </h1>
-        <div class="border-y border-black my-4 md:my-6 py-2 md:py-3">
-          <p class="text-sm md:text-base tracking-[0.5em]">追 踪 您 的 算 法 学 习 之 旅</p>
+
+        <!-- 副标题：双线包住 -->
+        <div class="border-y border-black py-2 md:py-3">
+          <p class="text-sm md:text-lg tracking-[0.5em] text-gray-700">
+            追 踪 您 的 算 法 学 习 之 旅
+          </p>
         </div>
-        <div class="flex flex-wrap justify-center items-center text-xs md:text-sm gap-x-8 gap-y-2 text-gray-700">
-          <span>总 做 题 {{ totalSolved }} 道</span>
-          <span>活 跃 平 台 {{ activeOJCount }} 个</span>
-          <span class="cursor-pointer hover:underline" @click="refreshData">[ 刷 新 数 据 ]</span>
+
+        <!-- 统计行 -->
+        <div class="flex flex-wrap justify-center gap-x-6 md:gap-x-10 mt-4 md:mt-5 text-xs md:text-sm text-gray-600">
+          <span>总做题 {{ summary.total }} 道</span>
+          <span>活跃平台 {{ Object.keys(summary.byOJ).filter(k => summary.byOJ[k].totalSolved > 0).length }} 个</span>
+          <span class="cursor-pointer underline" @click="refreshData">[ 刷 新 ]</span>
         </div>
       </div>
+
+      <!-- 报头下方双线 -->
+      <div class="max-w-4xl mx-auto newspaper-double-line mt-5"></div>
     </header>
 
-    <main class="max-w-5xl mx-auto px-5 md:px-10 py-8 md:py-12">
+    <main class="max-w-4xl mx-auto px-5 md:px-10 pb-16">
 
-      <!-- OJ 平台：横版铺开，只用横线分隔 -->
-      <section>
-        <div class="flex items-center gap-4 md:gap-8 mb-6 md:mb-10">
+      <!-- ======== OJ 平台区：横版列表，纯横线分隔 ======== -->
+      <section class="mt-6 md:mt-10">
+        <!-- 区标题：两侧横线 + 中间斜体 -->
+        <div class="flex items-center gap-3 md:gap-6 mb-4 md:mb-6">
           <div class="flex-1 border-t border-black"></div>
-          <h2 class="italic text-2xl md:text-3xl font-bold tracking-[0.3em]">O J 平 台</h2>
+          <h2 class="newspaper-section-title text-xl md:text-3xl tracking-[0.3em]">O J 平 台</h2>
           <div class="flex-1 border-t border-black"></div>
         </div>
 
-        <!-- 每个 OJ 一行，用 border-b 分隔，没有方框 -->
-        <div v-for="(config, idx) in ojConfigs" :key="config.id">
-          <div
-            class="flex flex-row items-center gap-4 md:gap-8 py-5 md:py-7 cursor-pointer hover:opacity-70 transition-opacity"
-            @click="goToOJ(config.id)"
-            :class="idx < ojConfigs.length - 1 ? 'border-b border-gray-500' : ''"
-          >
-            <!-- 左：大字号 OJ 名（斜体） + 小字描述 -->
-            <div class="flex-1 min-w-0">
-              <h3 class="italic text-4xl sm:text-5xl md:text-6xl font-bold tracking-[0.06em] leading-none truncate">
-                {{ config.name }}
-              </h3>
-              <p class="text-xs md:text-sm text-gray-500 mt-2 tracking-widest">
-                {{ config.description }}
-              </p>
-            </div>
+        <!-- 每个 OJ 一行，横线分隔，没有任何方框/底色/色块 -->
+        <div v-for="(config, idx) in ojConfigs" :key="config.id"
+             class="flex items-center gap-4 md:gap-6 py-5 md:py-6 cursor-pointer hover:opacity-60"
+             :class="idx < ojConfigs.length - 1 ? 'border-b border-gray-400' : 'border-b border-black'">
+          <!-- 左：OJ 名（大字号，仿宋斜体，**正常字重不加粗**） + 小字描述 -->
+          <div class="flex-1 min-w-0">
+            <h3 class="oj-title-italic text-3xl sm:text-4xl md:text-5xl leading-none truncate">
+              {{ config.name }}
+            </h3>
+            <p class="text-[11px] md:text-xs text-gray-500 mt-1 tracking-widest truncate">
+              {{ config.description }}
+            </p>
+          </div>
 
-            <!-- 右：做题数（大字） + 用户名（小字） -->
-            <div class="text-right flex-shrink-0">
-              <template v-if="ojStore.userData[config.id]?.data?.totalSolved">
-                <p class="text-[10px] md:text-xs tracking-[0.3em] text-gray-600 mb-1">已 解 决</p>
-                <p class="text-5xl md:text-7xl font-bold leading-none tabular-nums">
-                  {{ ojStore.userData[config.id].data!.totalSolved }}
-                </p>
-                <p class="text-[10px] md:text-xs text-gray-500 mt-2 truncate">
-                  @{{ ojStore.userData[config.id].userId }}
-                </p>
-              </template>
-              <template v-else>
-                <p class="text-[10px] md:text-xs tracking-[0.3em] text-gray-400 mb-1">暂 无 数 据</p>
-                <p class="text-3xl md:text-5xl font-bold text-gray-400">—</p>
-                <p class="text-[10px] md:text-xs text-gray-500 mt-2">点 击 进 入</p>
-              </template>
-            </div>
+          <!-- 右：做题数（大号数字，不加粗） + 用户名（小字） -->
+          <div class="text-right flex-shrink-0 pl-2">
+            <template v-if="ojStore.userData[config.id]?.data?.totalSolved">
+              <p class="text-[10px] md:text-xs tracking-[0.3em] text-gray-600 mb-1">已 解 决</p>
+              <p class="text-4xl md:text-6xl leading-none tabular-nums">
+                {{ ojStore.userData[config.id].data!.totalSolved }}
+              </p>
+              <p class="text-[10px] md:text-xs text-gray-500 mt-1 truncate">
+                @{{ ojStore.userData[config.id].userId }}
+              </p>
+            </template>
+            <template v-else>
+              <p class="text-[10px] md:text-xs tracking-[0.3em] text-gray-400 mb-1">暂 无 数 据</p>
+              <p class="text-3xl md:text-5xl text-gray-400">—</p>
+              <p class="text-[10px] md:text-xs text-gray-500 mt-1">点 击 进 入</p>
+            </template>
           </div>
         </div>
       </section>
 
-      <!-- 快捷操作 -->
-      <section class="mt-12 md:mt-16 border-t border-double border-black pt-6 md:pt-8">
-        <div class="flex items-center gap-4 md:gap-8 mb-5 md:mb-7">
+      <!-- ======== 快捷栏 ======== -->
+      <section class="mt-12 md:mt-16">
+        <div class="flex items-center gap-3 md:gap-6 mb-4 md:mb-6">
           <div class="flex-1 border-t border-black"></div>
-          <h2 class="italic text-xl md:text-2xl font-bold tracking-[0.3em]">快 捷 栏</h2>
+          <h2 class="newspaper-section-title text-lg md:text-2xl tracking-[0.3em]">快 捷 栏</h2>
           <div class="flex-1 border-t border-black"></div>
         </div>
 
-        <div class="flex flex-col sm:flex-row justify-center items-stretch gap-2 md:gap-6 text-center">
-          <div
-            class="flex-1 py-4 md:py-6 cursor-pointer hover:underline"
-            @click="goToStatistics"
-          >
-            <p class="italic text-xl md:text-2xl font-bold tracking-[0.4em]">统 计 图 表</p>
-            <p class="text-[10px] md:text-xs tracking-widest text-gray-500 mt-1">查看饼图汇总</p>
+        <div class="flex items-stretch text-center">
+          <div class="flex-1 py-4 md:py-6 cursor-pointer hover:underline" @click="goToStatistics">
+            <p class="oj-title-italic text-lg md:text-xl tracking-[0.4em]">统 计 图 表</p>
+            <p class="text-[10px] md:text-xs tracking-widest text-gray-500 mt-1">饼图汇总 · 难度分布</p>
           </div>
-          <div class="hidden sm:block w-px bg-gray-400"></div>
-          <div
-            class="flex-1 py-4 md:py-6 cursor-pointer hover:underline"
-            @click="goToDaily"
-          >
-            <p class="italic text-xl md:text-2xl font-bold tracking-[0.4em]">每 日 记 录</p>
+          <div class="w-px bg-gray-400 my-3 md:my-4"></div>
+          <div class="flex-1 py-4 md:py-6 cursor-pointer hover:underline" @click="goToDaily">
+            <p class="oj-title-italic text-lg md:text-xl tracking-[0.4em]">每 日 记 录</p>
             <p class="text-[10px] md:text-xs tracking-widest text-gray-500 mt-1">打卡今日刷题</p>
           </div>
         </div>
       </section>
 
-      <!-- 底部说明 -->
+      <!-- ======== 底部说明 ======== -->
       <section class="mt-10 md:mt-14 border-t border-gray-400 pt-4 text-center text-[10px] md:text-xs text-gray-500 tracking-widest space-y-1">
         <p>本 报 数 据 来 源 于 各 OJ 官 方 接 口</p>
-        <p>数 据 仅 存 储 在 本 地 浏 览 器 · 保 护 您 的 隐 私</p>
+        <p>数 据 按 IP 存 储 · 不 上 云</p>
       </section>
     </main>
 

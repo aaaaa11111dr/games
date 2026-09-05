@@ -81,7 +81,7 @@ function refreshData() { summary.value = getAllSummary() }
 
               <!-- 大标题：OJ 名称 -->
               <div class="flex-1 min-w-0">
-                <h3 class="text-3xl sm:text-4xl md:text-5xl font-bold tracking-[0.08em] leading-tight truncate">
+                <h3 class="italic text-3xl sm:text-4xl md:text-5xl font-bold tracking-[0.08em] leading-tight truncate">
                   {{ config.name }}
                 </h3>
                 <p class="text-xs md:text-sm text-gray-600 mt-1 tracking-widest">

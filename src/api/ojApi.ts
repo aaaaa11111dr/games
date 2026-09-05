@@ -118,30 +118,42 @@ export async function fetchHDUData(username: string): Promise<OJData> {
 }
 
 export async function fetchLuoguData(username: string): Promise<OJData> {
+  const now = new Date().toISOString()
   try {
-    const response = await fetch(`https://www.luogu.com.cn/api/user/search?keyword=${encodeURIComponent(username)}&type=user`)
-    const data = await response.json()
-    
-    if (data.users && data.users.length > 0) {
-      const user = data.users[0]
+    // 通过搜索接口获取 uid
+    const searchUrl = `https://www.luogu.com.cn/api/user/search?keyword=${encodeURIComponent(username)}`
+    const searchRes = await fetch('https://corsproxy.io/?' + encodeURIComponent(searchUrl))
+    const searchData = await searchRes.json()
+
+    if (searchData.users && searchData.users.length > 0) {
+      const uid = searchData.users[0].uid
+      // 爬用户主页 JSON 获取做题数
+      const profileUrl = `https://www.luogu.com.cn/user/${uid}`
+      const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(profileUrl)
+      const res = await fetch(proxyUrl, {
+        headers: { 'x-luogu-type': 'content-only' }
+      })
+      const data = await res.json()
+      const info = data.currentData?.user
+      const total = info?.passedProblemCount ?? 0
       return {
         userId: username,
-        totalSolved: user.solvedCount || 0,
-        easySolved: user.passedEasyCount || 0,
-        mediumSolved: user.passedMediumCount || 0,
-        hardSolved: user.passedHardCount || 0,
-        lastUpdated: new Date().toISOString()
+        totalSolved: total,
+        easySolved: 0,
+        mediumSolved: 0,
+        hardSolved: 0,
+        lastUpdated: now
       }
     }
   } catch {}
-  
+
   return {
     userId: username,
     totalSolved: 0,
     easySolved: 0,
     mediumSolved: 0,
     hardSolved: 0,
-    lastUpdated: new Date().toISOString()
+    lastUpdated: now
   }
 }
 

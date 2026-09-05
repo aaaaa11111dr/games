@@ -158,8 +158,8 @@ function getFormattedDate(isoString: string) {
       <!-- 各 OJ 平台 -->
       <section class="mb-10">
         <div class="border-b-4 border-double border-gray-800 pb-2 mb-6">
-          <h2 class="text-3xl font-bold">八 大 OJ 平 台 快 报</h2>
-          <p class="text-sm text-gray-600">以下是各主流算法平台的刷题统计</p>
+          <h2 class="text-3xl font-bold">OJ 平 台 列 表</h2>
+          <p class="text-sm text-gray-600">以下是各算法平台的刷题统计</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

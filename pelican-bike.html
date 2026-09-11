@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>鹈鹕骑车 · 天气变幻</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#0b1220;}
+  canvas{display:block;width:100vw;height:100vh;}
+  .hud{
+    position:fixed;left:50%;bottom:20px;transform:translateX(-50%);
+    font:14px/1.4 "PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    color:#fff;background:rgba(0,0,0,.30);padding:7px 20px;border-radius:999px;
+    letter-spacing:3px;user-select:none;pointer-events:none;
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    box-shadow:0 4px 18px rgba(0,0,0,.18);
+    transition:opacity .4s;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud" id="hud">☀️ 晴天</div>
+<script>
+(function () {
+  'use strict';
+
+  var canvas = document.getElementById('c');
+  var ctx = canvas.getContext('2d');
+  var hud = document.getElementById('hud');
+
+  // ---------- 全局状态 ----------
+  var W = 0, H = 0, DPR = 1;
+  var R = 90, groundY = 0, bikeX = 0;
+
+  var time = 0;
+  var wheelAngle = 0;
+  var legAngle = 0;
+  var worldScroll = 0;
+
+  var clouds = [];
+  var drops = [];
+
+  // ---------- 天气参数表 ----------
+  var STATES = {
+    sunny: {
+      skyTop:  [ 62, 152, 214],
+      skyBot:  [178, 226, 250],
+      sun:      1.0,
+      cloudAmt: 0.22,
+      rain:     0.0,
+      amb:      1.00,
+      cloudCol: [255, 255, 255],
+      hill1:    [150, 196, 126],
+      hill2:    [124, 172, 118],
+      ground1:  [134, 186, 110],
+      ground2:  [ 92, 144,  74]
+    },
+    cloudy: {
+      skyTop:  [124, 146, 163],
+      skyBot:  [200, 210, 217],
+      sun:      0.0,
+      cloudAmt: 1.00,
+      rain:     0.0,
+      amb:      0.84,
+      cloudCol: [216, 224, 230],
+      hill1:    [128, 154, 124],
+      hill2:    [110, 134, 112],
+      ground1:  [124, 148, 116],
+      ground2:  [ 86, 108,  84]
+    },
+    rainy: {
+      skyTop:  [ 58,  72,  84],
+      skyBot:  [112, 126, 138],
+      sun:      0.0,
+      cloudAmt: 1.30,
+      rain:     1.0,
+      amb:      0.62,
+      cloudCol: [150, 162, 172],
+      hill1:    [ 94, 110, 100],
+      hill2:    [ 78,  94,  88],
+      ground1:  [ 90, 104,  94],
+      ground2:  [ 62,  74,  68]
+    }
+  };
+
+  var ORDER = ['sunny', 'cloudy', 'rainy'];
+  var LABEL = { sunny: '☀️ 晴天', cloudy: '☁️ 阴天', rainy: '🌧️ 雨天' };
+  var weatherIdx = 0;
+  var weatherTimer = 0;
+
+  var cur = null;
+
+  // ---------- 工具函数 ----------
+  function rgb(a) {
+    return 'rgb(' + (a[0] | 0) + ',' + (a[1] | 0) + ',' + (a[2] | 0) + ')';
+  }
+  function rgba(a, al) {
+    return 'rgba(' + (a[0] | 0) + ',' + (a[1] | 0) + ',' + (a[2] | 0) + ',' + al + ')';
+  }
+  function hash(n) {
+    var s = Math.sin(n * 12.9898) * 43758.5453;
+    return s - Math.floor(s);
+  }
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+
+  function lerpState(c, t, k) {
+    for (var key in t) {
+      if (!Object.prototype.hasOwnProperty.call(t, key)) continue;
+      var b = t[key], a = c[key];
+      if (typeof b === 'number') {
+        c[key] = a + (b - a) * k;
+      } else if (b instanceof Array) {
+        for (var i = 0; i < b.length; i++) a[i] = a[i] + (b[i] - a[i]) * k;
+      }
+    }
+  }
+
+  // ---------- 布局 ----------
+  function computeLayout() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.max(320, window.innerWidth);
+    H = Math.max(240, window.innerHeight);
+
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    R = Math.max(30, Math.min(H * 0.115, W * 0.14));
+    groundY = H * 0.80;
+    bikeX = W * 0.5;
+
+    makeClouds();
+    makeDrops();
+  }
+
+  function makeClouds() {
+    clouds = [];
+    var n = 16;
+    for (var i = 0; i < n; i++) {
+      clouds.push({
+        x: Math.random() * W * 1.5 - W * 0.25,
+        y: H * (0.04 + Math.random() * 0.32),
+        s: (0.55 + Math.random() * 0.95) * Math.min(W, H) * 0.055,
+        spd: 0.06 + Math.random() * 0.14,
+        t: Math.random()
+      });
+    }
+  }
+
+  function makeDrops() {
+    drops = [];
+    var n = Math.round(W * H / 6000);
+    n = clamp(n, 80, 420);
+    for (var i = 0; i < n; i++) {
+      drops.push({
+        x: Math.random() * W * 1.3 - W * 0.15,
+        y: Math.random() * H,
+        len: 9 + Math.random() * 16,
+        spd: 620 + Math.random() * 420,
+        w: 0.9 + Math.random() * 1.1,
+        a: 0.22 + Math.random() * 0.5
+      });
+    }
+  }
+
+  // ---------- 更新 ----------
+  function update(dt) {
+    time += dt;
+
+    var speed = R * 5.0;                       // 世界滚动速度 px/s
+    worldScroll += speed * dt;
+    wheelAngle += (speed / R) * dt;            // 车轮无滑动滚动
+    legAngle += (speed / R) * 0.62 * dt;       // 蹬踏
+
+    // 5 秒切换天气
+    weatherTimer += dt;
+    if (weatherTimer >= 5) {
+      weatherTimer -= 5;
+      weatherIdx = (weatherIdx + 1) % ORDER.length;
+      hud.textContent = LABEL[ORDER[weatherIdx]];
+    }
+
+    // 平滑过渡
+    var k = 1 - Math.exp(-3.0 * dt);
+    lerpState(cur, STATES[ORDER[weatherIdx]], k);
+
+    // 云
+    for (var i = 0; i < clouds.length; i++) {
+      var c = clouds[i];
+      c.x -= c.spd * speed * 0.35 * dt;
+      if (c.x < -c.s * 4.5) {
+        c.x = W + c.s * 3.5;
+        c.y = H * (0.04 + Math.random() * 0.32);
+      }
+    }
+
+    // 雨
+    if (cur.rain > 0.01) {
+      for (var j = 0; j < drops.length; j++) {
+        var d = drops[j];
+        d.y += d.spd * dt;
+        d.x -= d.spd * 0.22 * dt;
+        if (d.y > H + 30) { d.y = -30; d.x = Math.random() * W * 1.3 - W * 0.15; }
+        if (d.x < -60) d.x = W + 50;
+      }
+    }
+  }
+
+  // ---------- 绘制：天空 ----------
+  function drawSky() {
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, rgb(cur.skyTop));
+    g.addColorStop(1, rgb(cur.skyBot));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // ---------- 绘制：太阳 ----------
+  function drawSun() {
+    if (cur.sun < 0.01) return;
+    var sx = W * 0.76, sy = H * 0.17;
+    var sr = Math.min(W, H) * 0.055;
+
+    ctx.save();
+    ctx.globalAlpha = cur.sun;
+
+    // 光晕
+    var g = ctx.createRadialGradient(sx, sy, sr * 0.4, sx, sy, sr * 5.5);
+    g.addColorStop(0, 'rgba(255,245,190,0.95)');
+    g.addColorStop(0.18, 'rgba(255,232,150,0.42)');
+    g.addColorStop(0.5, 'rgba(255,222,120,0.13)');
+    g.addColorStop(1, 'rgba(255,215,110,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(sx, sy, sr * 5.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 光芒
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(time * 0.14);
+    ctx.strokeStyle = 'rgba(255,242,175,0.55)';
+    ctx.lineCap = 'round';
+    for (var i = 0; i < 12; i++) {
+      var a = (i / 12) * Math.PI * 2;
+      var len = 1 + 0.28 * Math.sin(time * 2.2 + i * 1.7);
+      ctx.lineWidth = sr * 0.14;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * sr * 1.55, Math.sin(a) * sr * 1.55);
+      ctx.lineTo(Math.cos(a) * sr * (2.1 + len), Math.sin(a) * sr * (2.1 + len));
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // 本体
+    var core = ctx.createRadialGradient(sx - sr * 0.3, sy - sr * 0.3, sr * 0.1, sx, sy, sr);
+    core.addColorStop(0, '#fffdf0');
+    core.addColorStop(0.65, '#ffe680');
+    core.addColorStop(1, '#ffcf4d');
+    ctx.fillStyle = core;
+    ctx.beginPath();
+    ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // ---------- 绘制：云 ----------
+  function drawCloudShape(x, y, s, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    var puffs = [
+      [-1.00,  0.18, 0.72],
+      [-0.20, -0.26, 0.98],
+      [ 0.66, -0.06, 0.80],
+      [ 1.50,  0.20, 0.58],
+      [-1.75,  0.32, 0.48]
+    ];
+    for (var i = 0; i < puffs.length; i++) {
+      var cx = x + puffs[i][0] * s;
+      var cy = y + puffs[i][1] * s;
+      var rr = puffs[i][2] * s;
+      ctx.moveTo(cx + rr, cy);
+      ctx.arc(cx, cy, rr, 0, Math.PI * 2);
+    }
+    ctx.fill();
+  }
+
+  function drawClouds() {
+    var amt = cur.cloudAmt;
+    for (var i = 0; i < clouds.length; i++) {
+      var c = clouds[i];
+      var alpha = clamp((amt - c.t) * 3.2, 0, 1);
+      if (alpha <= 0.01) continue;
+      var shade = 1 - 0.16 * (1 - c.t);
+      var col = rgba(
+        [cur.cloudCol[0] * shade, cur.cloudCol[1] * shade, cur.cloudCol[2] * shade],
+        alpha * 0.92
+      );
+      drawCloudShape(c.x, c.y, c.s, col);
+    }
+  }
+
+  // ---------- 绘制：山丘 ----------
+  function hillLayer(amp, baseY, colorArr, kk, spd) {
+    var phase = worldScroll * spd * kk;
+    ctx.beginPath();
+    ctx.moveTo(-20, H);
+    for (var x = -20; x <= W + 20; x += 6) {
+      var y = baseY
+        - amp * (0.55 + 0.45 * Math.sin(x * kk + phase))
+        - amp * 0.34 * Math.sin(x * kk * 2.7 + phase * 1.6);
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(W + 20, H);
+    ctx.closePath();
+    ctx.fillStyle = rgb(colorArr);
+    ctx.fill();
+  }
+
+  function drawHills() {
+    hillLayer(H * 0.085, groundY + 6, cur.hill2, 0.0010, 0.24);
+    hillLayer(H * 0.060, groundY + 4, cur.hill1, 0.0019, 0.46);
+  }
+
+  // ---------- 绘制：地面 ----------
+  function drawGround() {
+    var g = ctx.createLinearGradient(0, groundY, 0, H);
+    g.addColorStop(0, rgb(cur.ground1));
+    g.addColorStop(1, rgb(cur.ground2));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, groundY, W, H - groundY);
+
+    // 地平线柔光
+    var lg = ctx.createLinearGradient(0, groundY - R * 0.25, 0, groundY + R * 0.6);
+    lg.addColorStop(0, rgba(cur.ground1, 0));
+    lg.addColorStop(1, rgba(cur.ground1, 0.55));
+    ctx.fillStyle = lg;
+    ctx.fillRect(0, groundY - R * 0.25, W, R * 0.85);
+
+    // 滚动草丛
+    var spacing = R * 1.8;
+    var n = Math.ceil(W / spacing) + 2;
+    var totalIdx = Math.floor(worldScroll / spacing);
+    var dark = [
+      cur.ground2[0] * 0.72,
+      cur.ground2[1] * 0.72,
+      cur.ground2[2] * 0.72
+    ];
+    ctx.strokeStyle = rgba(dark, 0.85);
+    ctx.lineWidth = R * 0.045;
+    ctx.lineCap = 'round';
+
+    for (var k = -1; k <= n; k++) {
+      var idx = totalIdx + k;
+      var jx = hash(idx) * spacing * 0.65;
+      var x = idx * spacing - worldScroll + jx;
+      if (x < -60 || x > W + 60) continue;
+      var y = groundY + R * 0.22 + hash(idx * 3.17) * R * 0.55;
+      var len = R * (0.14 + hash(idx * 7.31) * 0.22);
+      var sway = Math.sin(time * 2.4 + idx * 1.3) * R * 0.035;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + sway, y - len);
+      ctx.stroke();
+    }
+
+    // 小石子
+    ctx.fillStyle = rgba(dark, 0.45);
+    for (var m = -1; m <= n; m++) {
+      var id2 = totalIdx + m;
+      var x2 = id2 * spacing * 1.7 - worldScroll + hash(id2 * 5.5) * spacing * 1.2;
+      if (x2 < -40 || x2 > W + 40) continue;
+      var y2 = groundY + R * 0.9 + hash(id2 * 2.2) * (H - groundY) * 0.55;
+      var rr = R * (0.03 + hash(id2 * 9.1) * 0.045);
+      ctx.beginPath();
+      ctx.ellipse(x2, y2, rr * 1.5, rr, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // ---------- 绘制：雨 ----------
+  function drawRain() {
+    if (cur.rain < 0.02) return;
+    ctx.save();
+    ctx.strokeStyle = '#d6e9f7';
+    ctx.lineCap = 'round';
+    for (var i = 0; i < drops.length; i++) {
+      var d = drops[i];
+      ctx.globalAlpha = cur.rain * d.a;
+      ctx.lineWidth = d.w;
+      ctx.beginPath();
+      ctx.moveTo(d.x, d.y);
+      ctx.lineTo(d.x + d.len * 0.22, d.y - d.len);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // 雨幕薄雾
+    if (cur.rain > 0.5) {
+      ctx.save();
+      ctx.globalAlpha = (cur.rain - 0.5) * 0.16;
+      ctx.fillStyle = '#b9cede';
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+  }
+
+  // ---------- 两段式 IK（膝盖） ----------
+  function ik(hip, foot, a, b, flip) {
+    var dx = foot.x - hip.x;
+    var dy = foot.y - hip.y;
+    var d = Math.sqrt(dx * dx + dy * dy);
+    var maxD = a + b - 0.01;
+    if (d > maxD) d = maxD;
+    if (d < 0.01) d = 0.01;
+    var ang = Math.atan2(dy, dx);
+    var cosA = (d * d + a * a - b * b) / (2 * d * a);
+    var A = Math.acos(clamp(cosA, -1, 1));
+    var th = ang + A * flip;
+    return { x: hip.x + Math.cos(th) * a, y: hip.y + Math.sin(th) * a };
+  }
+
+  // ---------- 绘制：车轮 ----------
+  function drawWheel(cx, cy, ang) {
+    // 辐条
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(ang);
+    ctx.strokeStyle = 'rgba(226,234,240,0.9)';
+    ctx.lineWidth = R * 0.022;
+    for (var i = 0; i < 10; i++) {
+      ctx.rotate(Math.PI * 2 / 10);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, -R * 0.86);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // 轮圈
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * 0.89, 0, Math.PI * 2);
+    ctx.strokeStyle = '#ccd6de';
+    ctx.lineWidth = R * 0.05;
+    ctx.stroke();
+
+    // 轮胎
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * 0.945, 0, Math.PI * 2);
+    ctx.strokeStyle = '#23272d';
+    ctx.lineWidth = R * 0.11;
+    ctx.stroke();
+
+    // 花鼓
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * 0.07, 0, Math.PI * 2);
+    ctx.fillStyle = '#9aa6b0';
+    ctx.fill();
+  }
+
+  // ---------- 绘制：车架 ----------
+  function seg(a, b) {
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+
+  function drawFrame(A, B, C, S, HTb, HTt) {
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.strokeStyle = '#e2493a';
+    ctx.lineWidth = R * 0.085;
+    seg(A, S);     // 后上叉
+    seg(A, C);     // 后下叉
+    seg(S, C);     // 立管
+    seg(S, HTt);   // 上管
+    seg(C, HTb);   // 下管
+
+    ctx.strokeStyle = '#c53a2d';
+    ctx.lineWidth = R * 0.11;
+    seg(HTb, HTt); // 头管
+
+    ctx.strokeStyle = '#b6c1c9';
+    ctx.lineWidth = R * 0.07;
+    seg(HTb, B);   // 前叉
+
+    // 座垫
+    ctx.save();
+    ctx.translate(S.x, S.y);
+    ctx.rotate(-0.09);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, R * 0.42, R * 0.12, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#2b3138';
+    ctx.fill();
+    ctx.restore();
+
+    // 车把
+    ctx.beginPath();
+    ctx.moveTo(HTt.x - 0.44 * R, HTt.y - 0.02 * R);
+    ctx.quadraticCurveTo(HTt.x, HTt.y - 0.16 * R, HTt.x + 0.40 * R, HTt.y - 0.05 * R);
+    ctx.strokeStyle = '#2b3138';
+    ctx.lineWidth = R * 0.07;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+
+  // ---------- 绘制：曲柄 + 脚踏 ----------
+  function drawCranks(C, ang) {
+    var cr = R * 0.40;
+    var p1 = { x: C.x + Math.cos(ang) * cr, y: C.y + Math.sin(ang) * cr };
+    var p2 = { x: C.x - Math.cos(ang) * cr, y: C.y - Math.sin(ang) * cr };
+
+    // 牙盘
+    ctx.beginPath();
+    ctx.arc(C.x, C.y, R * 0.25, 0, Math.PI * 2);
+    ctx.strokeStyle = '#b9c4cc';
+    ctx.lineWidth = R * 0.035;
+    ctx.stroke();
+
+    ctx.strokeStyle = '#9aa6b0';
+    ctx.lineWidth = R * 0.055;
+    ctx.lineCap = 'round';
+    seg(C, p1);
+    seg(C, p2);
+
+    ctx.fillStyle = '#333a40';
+    ctx.fillRect(p1.x - R * 0.16, p1.y - R * 0.035, R * 0.32, R * 0.07);
+    ctx.fillRect(p2.x - R * 0.16, p2.y - R * 0.035, R * 0.32, R * 0.07);
+
+    return { p1: p1, p2: p2 };
+  }
+
+  // ---------- 绘制：腿 ----------
+  function drawLeg(hip, foot, color, w) {
+    var knee = ik(hip, foot, R * 0.90, R * 0.90, -1);
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = w;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(hip.x, hip.y);
+    ctx.lineTo(knee.x, knee.y);
+    ctx.lineTo(foot.x, foot.y);
+    ctx.stroke();
+
+    // 蹼足
+    ctx.save();
+    ctx.translate(foot.x, foot.y);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(R * 0.05, R * 0.02, R * 0.17, R * 0.07, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ---------- 绘制：鹈鹕 ----------
+  function drawPelican() {
+    // 尾巴
+    ctx.fillStyle = '#e6edf3';
+    ctx.beginPath();
+    ctx.moveTo(-1.05 * R, -2.72 * R);
+    ctx.quadraticCurveTo(-1.75 * R, -3.00 * R, -2.28 * R, -2.86 * R);
+    ctx.quadraticCurveTo(-1.80 * R, -2.56 * R, -1.35 * R, -2.24 * R);
+    ctx.closePath();
+    ctx.fill();
+
+    // 身体
+    ctx.save();
+    ctx.translate(-0.75 * R, -2.55 * R);
+    ctx.rotate(-0.10);
+    var bg = ctx.createLinearGradient(0, -0.68 * R, 0, 0.68 * R);
+    bg.addColorStop(0, '#ffffff');
+    bg.addColorStop(0.62, '#f4f8fb');
+    bg.addColorStop(1, '#dde6ee');
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 0.86 * R, 0.66 * R, 0, 0, Math.PI * 2);
+    ctx.fillStyle = bg;
+    ctx.fill();
+    ctx.restore();
+
+    // 脖子
+    ctx.beginPath();
+    ctx.moveTo(-0.08 * R, -2.86 * R);
+    ctx.quadraticCurveTo(0.34 * R, -3.30 * R, 0.50 * R, -3.74 * R);
+    ctx.lineWidth = R * 0.42;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // 头
+    ctx.beginPath();
+    ctx.arc(0.50 * R, -3.78 * R, 0.32 * R, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+
+    // 喉囊
+    ctx.beginPath();
+    ctx.moveTo(0.70 * R, -3.62 * R);
+    ctx.quadraticCurveTo(1.22 * R, -3.06 * R, 1.88 * R, -3.58 * R);
+    ctx.quadraticCurveTo(1.26 * R, -3.54 * R, 0.70 * R, -3.62 * R);
+    ctx.closePath();
+    ctx.fillStyle = '#ffcf6b';
+    ctx.fill();
+
+    // 上喙
+    ctx.beginPath();
+    ctx.moveTo(0.60 * R, -3.84 * R);
+    ctx.quadraticCurveTo(1.32 * R, -3.98 * R, 1.90 * R, -3.60 * R);
+    ctx.quadraticCurveTo(1.30 * R, -3.68 * R, 0.64 * R, -3.60 * R);
+    ctx.closePath();
+    ctx.fillStyle = '#ffb648';
+    ctx.fill();
+
+    // 喙缝线
+    ctx.beginPath();
+    ctx.moveTo(0.66 * R, -3.66 * R);
+    ctx.quadraticCurveTo(1.28 * R, -3.66 * R, 1.86 * R, -3.60 * R);
+    ctx.strokeStyle = 'rgba(180,110,20,0.45)';
+    ctx.lineWidth = R * 0.022;
+    ctx.stroke();
+
+    // 眼睛
+    ctx.beginPath();
+    ctx.arc(0.62 * R, -3.87 * R, R * 0.075, 0, Math.PI * 2);
+    ctx.fillStyle = '#26303a';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0.645 * R, -3.90 * R, R * 0.026, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.fill();
+
+    // 头顶小冠羽
+    ctx.beginPath();
+    ctx.moveTo(0.40 * R, -4.02 * R);
+    ctx.quadraticCurveTo(0.46 * R, -4.22 * R, 0.56 * R, -4.10 * R);
+    ctx.strokeStyle = '#eef3f7';
+    ctx.lineWidth = R * 0.05;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // 翅膀（伸向车把）
+    ctx.beginPath();
+    ctx.moveTo(-0.36 * R, -2.74 * R);
+    ctx.quadraticCurveTo(0.28 * R, -2.86 * R, 0.92 * R, -2.18 * R);
+    ctx.lineWidth = R * 0.31;
+    ctx.strokeStyle = '#eef3f7';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // 翅尖搭在把上
+    ctx.beginPath();
+    ctx.arc(0.96 * R, -2.16 * R, R * 0.155, 0, Math.PI * 2);
+    ctx.fillStyle = '#eef3f7';
+    ctx.fill();
+
+    // 翅膀羽纹
+    ctx.beginPath();
+    ctx.moveTo(-0.24 * R, -2.80 * R);
+    ctx.quadraticCurveTo(0.30 * R, -2.94 * R, 0.80 * R, -2.38 * R);
+    ctx.strokeStyle = 'rgba(160,180,196,0.55)';
+    ctx.lineWidth = R * 0.03;
+    ctx.stroke();
+  }
+
+  // ---------- 绘制：骑手整体 ----------
+  function drawRider() {
+    var bob = Math.sin(time * 10) * R * 0.009;
+
+    ctx.save();
+    ctx.translate(bikeX, groundY + bob);
+
+    // 地面阴影
+    ctx.save();
+    ctx.globalAlpha = 0.20 * cur.amb;
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.ellipse(0, R * 0.10, R * 2.7, R * 0.16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    var A = { x: -1.50 * R, y: -1.00 * R };
+    var B = { x:  1.50 * R, y: -1.00 * R };
+    var C = { x: -0.12 * R, y: -0.70 * R };
+    var S = { x: -0.95 * R, y: -1.98 * R };
+    var HTb = { x: 1.20 * R, y: -1.55 * R };
+    var HTt = { x: 1.00 * R, y: -2.08 * R };
+
+    drawWheel(A.x, A.y, wheelAngle);
+    drawWheel(B.x, B.y, wheelAngle);
+
+    drawFrame(A, B, C, S, HTb, HTt);
+
+    var ped = drawCranks(C, legAngle);
+
+    // 腿（远侧稍暗）
+    var hipFar  = { x: -0.80 * R, y: -1.92 * R };
+    var hipNear = { x: -0.66 * R, y: -1.90 * R };
+    drawLeg(hipFar,  ped.p2, '#d98b25', R * 0.085);
+    drawLeg(hipNear, ped.p1, '#f5a93c', R * 0.095);
+
+    // 鹈鹕
+    drawPelican();
+
+    ctx.restore();
+  }
+
+  // ---------- 暗角 ----------
+  function drawVignette() {
+    var g = ctx.createRadialGradient(
+      W * 0.5, H * 0.5, Math.min(W, H) * 0.32,
+      W * 0.5, H * 0.5, Math.max(W, H) * 0.78
+    );
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,' + (0.30 * (1 - cur.amb)).toFixed(3) + ')');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // ---------- 渲染 ----------
+  function render() {
+    drawSky();
+    drawSun();
+    drawClouds();
+    drawHills();
+    drawGround();
+    drawRider();
+    drawRain();
+    drawVignette();
+  }
+
+  // ---------- 主循环 ----------
+  var last = performance.now();
+
+  function loop(now) {
+    var dt = (now - last) / 1000;
+    last = now;
+    if (dt > 0.06) dt = 0.06;
+    if (dt < 0) dt = 0;
+
+    update(dt);
+    render();
+
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- 启动 ----------
+  function init() {
+    cur = JSON.parse(JSON.stringify(STATES.sunny));
+    computeLayout();
+    hud.textContent = LABEL[ORDER[weatherIdx]];
+    requestAnimationFrame(function (t) {
+      last = t;
+      requestAnimationFrame(loop);
+    });
+  }
+
+  var resizeTimer = null;
+  window.addEventListener('resize', function () {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(computeLayout, 120);
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>

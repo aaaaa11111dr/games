@@ -1,137 +1,33 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { ojConfigs } from '../config/ojConfigs'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { ojStore, getAllSummary } from '../store/ojStore'
-import type { AllOJSummary } from '../types'
-
-const router = useRouter()
-const summary = ref<AllOJSummary>({ total: 0, byOJ: {}, lastUpdated: '' })
-
-const todayDate = computed(() => {
-  const now = new Date()
-  const weekDay = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][now.getDay()]
-  return `${now.getFullYear()}年${String(now.getMonth() + 1).padStart(2, '0')}月${String(now.getDate()).padStart(2, '0')}日 ${weekDay}`
-})
-
-onMounted(() => { summary.value = getAllSummary() })
-
-function goToOJ(ojId: string) { router.push(`/${ojId}`) }
-function goToStatistics() { router.push('/statistics') }
-function goToDaily() { router.push('/daily') }
-function refreshData() { summary.value = getAllSummary() }
+import { training } from '../store/trainingStore'
+import { timeStore } from '../store/timeStore'
+import { ojConfigs } from '../config/ojConfigs'
+import { monthDays, dateKey, remainingSeconds } from '../lib/calendar'
+const summary = computed(getAllSummary)
+const now = ref(new Date())
+const miniDays = computed(() => monthDays(now.value.getFullYear(), now.value.getMonth()))
+const todayKey = computed(() => dateKey(now.value))
+const lunar = computed(() => new Intl.DateTimeFormat('zh-CN-u-ca-chinese', { month: 'long', day: 'numeric' }).format(now.value))
+const completed = computed(() => training.plans.reduce((n, p) => n + p.problems.filter(q => q.done).length, 0))
+const next = computed(() => [...training.plans, ...timeStore.alarms].filter(p => p.enabled && p.due && p.firedFor !== p.due).sort((a,b) => a.due.localeCompare(b.due))[0])
+const timerLeft = computed(() => remainingSeconds(timeStore.countdown.end, now.value.getTime()))
+let ticker: ReturnType<typeof setInterval>
+onMounted(() => { ticker = setInterval(() => { now.value = new Date() }, 1000) })
+onUnmounted(() => clearInterval(ticker))
 </script>
-
 <template>
-  <div class="min-h-screen">
-
-    <!-- 顶部报头：双下划线 + 大标题 + 副标题双线包 -->
-    <header class="px-4 pt-8 pb-4 md:pt-12 md:pb-6">
-      <div class="max-w-4xl mx-auto text-center">
-        <!-- 日期行 -->
-        <p class="text-sm md:text-base tracking-[0.4em] text-gray-600">
-          {{ todayDate }} · 第 壹 期
-        </p>
-
-        <!-- 大标题：仿宋斜体，不用任何粗体 -->
-        <h1 class="newspaper-headline text-5xl md:text-7xl my-4 md:my-6">
-          O J 刷 题 日 报
-        </h1>
-
-        <!-- 副标题：双线包住 -->
-        <div class="border-y border-black py-2 md:py-3">
-          <p class="text-sm md:text-lg tracking-[0.5em] text-gray-700">
-            追 踪 您 的 算 法 学 习 之 旅
-          </p>
-        </div>
-
-        <!-- 统计行 -->
-        <div class="flex flex-wrap justify-center gap-x-6 md:gap-x-10 mt-4 md:mt-5 text-xs md:text-sm text-gray-600">
-          <span>总做题 {{ summary.total }} 道</span>
-          <span>活跃平台 {{ Object.keys(summary.byOJ).filter(k => summary.byOJ[k].totalSolved > 0).length }} 个</span>
-          <span class="cursor-pointer underline" @click="refreshData">[ 刷 新 ]</span>
-        </div>
-      </div>
-
-      <!-- 报头下方双线 -->
-      <div class="max-w-4xl mx-auto newspaper-double-line mt-5"></div>
-    </header>
-
-    <main class="max-w-4xl mx-auto px-5 md:px-10 pb-16">
-
-      <!-- ======== OJ 平台区：横版列表，纯横线分隔 ======== -->
-      <section class="mt-6 md:mt-10">
-        <!-- 区标题：两侧横线 + 中间斜体 -->
-        <div class="flex items-center gap-3 md:gap-6 mb-4 md:mb-6">
-          <div class="flex-1 border-t border-black"></div>
-          <h2 class="newspaper-section-title text-xl md:text-3xl tracking-[0.3em]">O J 平 台</h2>
-          <div class="flex-1 border-t border-black"></div>
-        </div>
-
-        <!-- 每个 OJ 一行，横线分隔，没有任何方框/底色/色块 -->
-        <div v-for="(config, idx) in ojConfigs" :key="config.id"
-             class="flex items-center gap-4 md:gap-6 py-5 md:py-6 cursor-pointer hover:opacity-60"
-             :class="idx < ojConfigs.length - 1 ? 'border-b border-gray-400' : 'border-b border-black'">
-          <!-- 左：OJ 名（大字号，仿宋斜体，**正常字重不加粗**） + 小字描述 -->
-          <div class="flex-1 min-w-0">
-            <h3 class="oj-title-italic text-3xl sm:text-4xl md:text-5xl leading-none truncate">
-              {{ config.name }}
-            </h3>
-            <p class="text-[11px] md:text-xs text-gray-500 mt-1 tracking-widest truncate">
-              {{ config.description }}
-            </p>
-          </div>
-
-          <!-- 右：做题数（大号数字，不加粗） + 用户名（小字） -->
-          <div class="text-right flex-shrink-0 pl-2">
-            <template v-if="ojStore.userData[config.id]?.data?.totalSolved">
-              <p class="text-[10px] md:text-xs tracking-[0.3em] text-gray-600 mb-1">已 解 决</p>
-              <p class="text-4xl md:text-6xl leading-none tabular-nums">
-                {{ ojStore.userData[config.id].data!.totalSolved }}
-              </p>
-              <p class="text-[10px] md:text-xs text-gray-500 mt-1 truncate">
-                @{{ ojStore.userData[config.id].userId }}
-              </p>
-            </template>
-            <template v-else>
-              <p class="text-[10px] md:text-xs tracking-[0.3em] text-gray-400 mb-1">暂 无 数 据</p>
-              <p class="text-3xl md:text-5xl text-gray-400">—</p>
-              <p class="text-[10px] md:text-xs text-gray-500 mt-1">点 击 进 入</p>
-            </template>
-          </div>
-        </div>
-      </section>
-
-      <!-- ======== 快捷栏 ======== -->
-      <section class="mt-12 md:mt-16">
-        <div class="flex items-center gap-3 md:gap-6 mb-4 md:mb-6">
-          <div class="flex-1 border-t border-black"></div>
-          <h2 class="newspaper-section-title text-lg md:text-2xl tracking-[0.3em]">快 捷 栏</h2>
-          <div class="flex-1 border-t border-black"></div>
-        </div>
-
-        <div class="flex items-stretch text-center">
-          <div class="flex-1 py-4 md:py-6 cursor-pointer hover:underline" @click="goToStatistics">
-            <p class="oj-title-italic text-lg md:text-xl tracking-[0.4em]">统 计 图 表</p>
-            <p class="text-[10px] md:text-xs tracking-widest text-gray-500 mt-1">饼图汇总 · 难度分布</p>
-          </div>
-          <div class="w-px bg-gray-400 my-3 md:my-4"></div>
-          <div class="flex-1 py-4 md:py-6 cursor-pointer hover:underline" @click="goToDaily">
-            <p class="oj-title-italic text-lg md:text-xl tracking-[0.4em]">每 日 记 录</p>
-            <p class="text-[10px] md:text-xs tracking-widest text-gray-500 mt-1">打卡今日刷题</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- ======== 底部说明 ======== -->
-      <section class="mt-10 md:mt-14 border-t border-gray-400 pt-4 text-center text-[10px] md:text-xs text-gray-500 tracking-widest space-y-1">
-        <p>本 报 数 据 来 源 于 各 OJ 官 方 接 口</p>
-        <p>数 据 按 IP 存 储 · 不 上 云</p>
-      </section>
-    </main>
-
-    <footer class="border-t-[6px] border-double border-black py-4 text-center text-xs md:text-sm tracking-[0.5em] text-gray-600">
-      O J - T r a c k e r · 祝 您 刷 题 愉 快
-    </footer>
+  <div class="frontpage-kicker"><span>学习专刊 · PERSONAL ALGORITHM JOURNAL</span></div>
+  <div class="newspaper-grid">
+    <aside class="news-column briefs-column"><h2 class="column-title">研习快讯</h2><div class="brief"><span class="article-label">壹 / 积累</span><strong class="news-number">{{ summary.total }}</strong><h3>累计解题</h3></div><div class="brief"><span class="article-label">贰 / 计划</span><strong class="news-number">{{ training.plans.length }}</strong><h3>自建训练题单</h3><p>已完成 {{ completed }} 道训练题</p><RouterLink to="/training" class="editorial-link">编排我的题单 →</RouterLink></div><div class="brief"><span class="article-label">叁 / 记录</span><h3>分数记录</h3><p>已添加 {{ training.ratings.length }} 条分数曲线</p><RouterLink to="/ratings" class="editorial-link">阅览分数趋势 →</RouterLink></div></aside>
+    <section class="news-column lead-column"><span class="article-label">本期头条 / THE DAILY PRACTICE</span><h1 class="lead-headline">算法训练</h1>
+      <div class="engraving" aria-hidden="true"><svg viewBox="0 0 540 180"><defs><pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(25)"><path d="M0 0V5" stroke="currentColor" stroke-width=".6"/></pattern></defs><g fill="none" stroke="currentColor"><path d="M34 159H507M48 163H492M76 168H477"/><path d="M82 148L239 132L360 149L205 169Z" fill="url(#hatch)"/><path d="M83 140L238 126L360 143L205 160Z M83 140V148M205 160V169M360 143V149"/><path d="M103 128L239 114L341 130L202 145Z M103 128V137L201 154L341 139V130M201 145V154"/><path d="M113 124V49Q174 36 225 60Q276 36 326 46V122Q271 109 225 137Q171 110 113 124Z" fill="url(#hatch)"/><path d="M225 60V137M120 52Q174 41 218 63V128Q172 107 120 118Z M232 63Q278 42 319 50V116Q273 107 232 128Z" fill="none"/><path d="M131 65Q171 59 205 73M131 75Q171 69 205 83M131 85Q171 79 205 93M131 95Q171 89 205 103M245 74Q277 59 309 62M245 84Q277 69 309 72M245 94Q277 79 309 82M245 104Q277 89 309 92"/><path d="M382 145H434L427 119H389Z M391 119L396 102H422L427 119M395 101H422V97H395Z" fill="url(#hatch)"/><path d="M408 98Q414 46 463 14Q451 70 414 88M408 98L458 22M426 66L427 42M436 54L438 32M419 79L444 70M426 67L452 54"/><path d="M58 156L51 80L56 77L67 155M52 83L58 83M58 155L65 154"/></g></svg></div>
+      <div class="lead-copy"><p>Codeforces 与 LeetCode 新题，支持按难度筛选并加入题单。</p><p>自定义训练题单、比赛分数记录、日程提醒与倒计时。</p></div><div class="lead-actions"><RouterLink to="/recommendations" class="primary">阅览新题 →</RouterLink><RouterLink to="/training" class="editorial-link">自建训练计划 ↗</RouterLink></div>
+    </section>
+    <aside class="news-column almanac-column"><h2 class="column-title">日用万年历</h2><div class="today-folio"><span>{{ now.getFullYear() }} 年 {{ now.getMonth() + 1 }} 月</span><strong>{{ now.getDate() }}</strong><p>{{ now.toLocaleDateString('zh-CN', { weekday: 'long' }) }} · 农历 {{ lunar }}</p></div><div class="mini-calendar"><b v-for="day in ['一','二','三','四','五','六','日']">{{ day }}</b><RouterLink v-for="day in miniDays" :key="day.key" to="/calendar" :class="{ faded: !day.current, current: day.key === todayKey }">{{ day.day }}</RouterLink></div><RouterLink to="/calendar" class="calendar-entry">查阅万年历 / 安排日程 →</RouterLink><div class="schedule-brief"><h3>定时小札</h3><p v-if="next"><strong>{{ next.title }}</strong><br />{{ new Date(next.due).toLocaleString('zh-CN') }}</p><p v-else>暂无待办提醒</p><p v-if="timeStore.countdown.status === 'running'">专注计时中 · 剩余 {{ Math.floor(timerLeft / 60) }} 分 {{ timerLeft % 60 }} 秒</p><RouterLink to="/calendar" class="small-button">设置提醒与倒计时</RouterLink></div></aside>
   </div>
+  <div class="press-section-title"><span>各地题库 · OJ PLATFORMS</span><RouterLink to="/statistics">查看统计报告 →</RouterLink></div>
+  <div class="platform-grid"><RouterLink v-for="(config, i) in ojConfigs" :key="config.id" :to="`/${config.id}`" class="panel platform-card"><div class="row spread"><span class="article-label">第 {{ ['一','二','三','四'][i] }} 专栏</span><span>↗</span></div><h2>{{ config.name }}</h2><p class="muted">{{ ojStore.userData[config.id]?.userId || '未连接账号' }}</p><div class="row spread"><strong>{{ ojStore.userData[config.id]?.data?.totalSolved ?? '—' }}</strong><small>题已解决</small></div></RouterLink></div>
+  <div class="newspaper-bottom"><RouterLink to="/daily">写下今日刷题记录 →</RouterLink></div>
 </template>

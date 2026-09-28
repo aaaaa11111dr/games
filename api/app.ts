@@ -15,6 +15,7 @@ import authRoutes from './routes/auth.js'
 import problemRoutes from './routes/problems.js'
 import ojRoutes from './routes/oj.js'
 import userRoutes from './routes/user.js'
+import trainingRoutes from './routes/training.js'
 
 // for esm mode
 const __filename = fileURLToPath(import.meta.url)
@@ -36,6 +37,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/problems', problemRoutes)
 app.use('/api/oj', ojRoutes)
 app.use('/api/user', userRoutes)
+app.use('/api/training', trainingRoutes)
 
 /**
  * health
@@ -63,7 +65,7 @@ app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
 /**
  * 404 handler
  */
-app.use((req: Request, res: Response) => {
+app.use('/api', (req: Request, res: Response) => {
   res.status(404).json({
     success: false,
     error: 'API not found',

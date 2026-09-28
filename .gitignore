@@ -23,3 +23,13 @@ dist-ssr
 *.sln
 *.sw?
 .vite
+
+# Local runtime data and preview artifacts
+data/
+artifacts/
+.env
+.env.*
+!.env.example
+.trae/
+.trae-html-share-packages/
+*.tsbuildinfo

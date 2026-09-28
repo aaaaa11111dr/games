@@ -15,7 +15,7 @@ const PORT = Number(process.env.PORT || 3001)
 
 // Optional: serve built frontend dist/ from the same process.
 // Enable by setting SERVE_STATIC=1, and build frontend first.
-const SERVE_STATIC = process.env.SERVE_STATIC === '1'
+const SERVE_STATIC = process.env.SERVE_STATIC !== '0'
 const DIST_DIR = path.resolve(__dirname, '../dist')
 
 if (SERVE_STATIC && existsSync(DIST_DIR)) {

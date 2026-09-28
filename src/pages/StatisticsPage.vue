@@ -165,6 +165,7 @@ const difficultyChartOptions = {
     </header>
 
     <main class="max-w-6xl mx-auto px-4 py-8">
+      <RouterLink to="/ratings" class="primary mb-6">查看各 OJ 分数折线图 →</RouterLink>
       <!-- 总体概览 -->
       <section class="mb-10 border-t border-black border-b border-black">
         <div class="bg-black text-white px-4 py-2">

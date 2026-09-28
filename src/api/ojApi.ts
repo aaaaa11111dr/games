@@ -159,7 +159,7 @@ export async function parseProblemList(url: string): Promise<ProblemList> {
     
     const problems: Problem[] = []
     
-    const $ = await import('cheerio').then(m => m.default)
+    const $ = await import('cheerio')
     const doc = $.load(html)
     
     doc('tr').each((_, el) => {
